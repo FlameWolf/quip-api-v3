@@ -111,7 +111,7 @@ export const uploadFile = async (file: File) => {
 };
 export const createPost: Handler = async ctx => {
 	const { req } = ctx;
-	const { content = emptyString, poll, media, "media-description": mediaDescription, location } = (await req.json()) as PostCreateBody;
+	const { content = emptyString, poll, media, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
 		validateContent(content, poll, media as File);
@@ -309,7 +309,7 @@ export const getPostParent: Handler = async ctx => {
 export const quotePost: Handler = async ctx => {
 	const { req } = ctx;
 	const postId = req.param("postId") as string;
-	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.json()) as PostCreateBody;
+	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
 		validateContent(content, poll, media as File, postId);
@@ -461,7 +461,7 @@ export const unrepeatPost: Handler = async ctx => {
 export const replyToPost: Handler = async ctx => {
 	const { req } = ctx;
 	const postId = req.param("postId") as string;
-	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.json()) as PostCreateBody;
+	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
 		validateContent(content, poll, media as File);

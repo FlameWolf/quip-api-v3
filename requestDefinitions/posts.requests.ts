@@ -4,8 +4,11 @@ import { type } from "arktype";
 
 export const postCreateBody = type({
 	content: "string",
-	poll: type("string")
+	poll: type("string|undefined")
 		.pipe(value => {
+			if (!value) {
+				return;
+			}
 			const parsed = JSON.parse(value) as {
 				first: string;
 				second: string;
@@ -47,12 +50,39 @@ export const postCreateBody = type({
 		.or("File")
 		.optional(),
 	"media-description": "string?",
-	location: type({
-		type: type.enumerated("Point"),
-		coordinates: type("number").atLeast(-180).atMost(180).array().exactlyLength(2)
-	})
-		.array()
-		.exactlyLength(2)
+	location: type("string|undefined")
+		.pipe(value => {
+			if (!value) {
+				return;
+			}
+			const parsed = JSON.parse(value) as {
+				type: "Point";
+				coordinates: [number, number];
+			};
+			const isValid = (() => {
+				if (typeof parsed === "object" && parsed !== null) {
+					if (parsed.type !== "Point") {
+						return false;
+					}
+					if (!Array.isArray(parsed.coordinates) || parsed.coordinates.length !== 2) {
+						return false;
+					}
+					const [longitude, latitude] = parsed.coordinates;
+					if (typeof longitude !== "number" || longitude < -180 || longitude > 180) {
+						return false;
+					}
+					if (typeof latitude !== "number" || latitude < -90 || latitude > 90) {
+						return false;
+					}
+				}
+				return true;
+			})();
+			if (isValid) {
+				return parsed;
+			} else {
+				throw new Error("Invalid location object");
+			}
+		})
 		.optional()
 });
 export const postInteractParams = type({

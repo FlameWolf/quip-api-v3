@@ -9,7 +9,7 @@ import type { Hono } from "hono";
 export default (basePath: Hono) => {
 	basePath.get("/", async ctx => {
 		if (process.env.NODE_ENV !== "production") {
-			return ctx.redirect("/api-docs/v3");
+			return ctx.redirect("/swagger");
 		}
 		return ctx.status(404);
 	});
