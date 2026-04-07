@@ -77,8 +77,7 @@ app.get(
 				{
 					Bearer: []
 				}
-			],
-			servers: [{ url: "http://localhost:2048", description: "Local Server" }]
+			]
 		}
 	})
 );
@@ -96,6 +95,6 @@ serve(
 		port: +(process.env.PORT as string) || 2048
 	},
 	info => {
-		console.log(`Server is running on http://localhost:${info.port}`);
+		console.log(`Server is running on ${info.address}${info.port}`);
 	}
 );
