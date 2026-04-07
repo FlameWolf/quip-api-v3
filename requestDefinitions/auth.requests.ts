@@ -1,0 +1,23 @@
+"use strict";
+
+import { type } from "arktype";
+
+export const credentialsBody = type({
+	handle: "string",
+	password: "string"
+});
+export const refreshTokenHeaders = type({
+	"x-slug": "string",
+	"x-uid": "string"
+});
+export const refreshTokenBody = type({
+	refreshToken: "string"
+});
+export const revokeTokenParams = type({
+	token: "string"
+});
+
+export type CredentialsBody = typeof credentialsBody.inferOut;
+export type RefreshTokenHeaders = typeof refreshTokenHeaders.inferOut;
+export type RefreshTokenBody = typeof refreshTokenBody.inferOut;
+export type RevokeTokenParams = typeof revokeTokenParams.inferOut;
