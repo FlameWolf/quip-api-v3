@@ -25,7 +25,6 @@ await import("./schemaTypes/url.ts");
 	api_key: process.env.CLOUD_API_KEY,
 	api_secret: process.env.CLOUD_API_SECRET
 });
-
 const allowedOrigins = process.env.ALLOW_ORIGINS || emptyString;
 const app = new Hono();
 app.use(secureHeaders());
@@ -41,6 +40,44 @@ app.use(async (ctx, next) => {
 	}
 	await next();
 });
+if (!isProdEnv) {
+	app.get(
+		"/openapi",
+		openAPIRouteHandler(app, {
+			documentation: {
+				info: {
+					title: "Quip API",
+					version: "1.0.0"
+				},
+				components: {
+					securitySchemes: {
+						Bearer: {
+							type: "apiKey",
+							name: "Authorization",
+							in: "header",
+							description: "Enter your bearer token in the format **Bearer &#x3C;token&#x3E;**"
+						}
+					}
+				},
+				security: [
+					{
+						Bearer: []
+					}
+				]
+			},
+			includeEmptyPaths: true,
+			exclude: ["/openapi", "/swagger"]
+		})
+	);
+	app.get(
+		"/swagger",
+		swaggerUI({
+			url: "/openapi",
+			persistAuthorization: true,
+			withCredentials: true
+		})
+	);
+}
 app.use(async ({ req }, next) => {
 	try {
 		const authToken = req.header("Authorization")?.replace(/^bearer\s+/i, emptyString);
@@ -55,40 +92,9 @@ app.use(async ({ req }, next) => {
 (await import("./routes/posts.router.ts")).default(app.basePath("/posts"));
 (await import("./routes/search.router.ts")).default(app.basePath("/search"));
 (await import("./routes/settings.router.ts")).default(app.basePath("/settings"));
-app.get(
-	"/openapi",
-	openAPIRouteHandler(app, {
-		documentation: {
-			info: {
-				title: "Quip API",
-				version: "1.0.0"
-			},
-			components: {
-				securitySchemes: {
-					Bearer: {
-						type: "apiKey",
-						name: "Authorization",
-						in: "header",
-						description: "Enter your bearer token in the format **Bearer &#x3C;token&#x3E;**"
-					}
-				}
-			},
-			security: [
-				{
-					Bearer: []
-				}
-			]
-		}
-	})
-);
-app.get(
-	"/swagger",
-	swaggerUI({
-		url: "/openapi",
-		persistAuthorization: true,
-		withCredentials: true
-	})
-);
+app.onError(async (err, ctx) => {
+	return ctx.json(err, 500);
+});
 serve(
 	{
 		fetch: app.fetch,

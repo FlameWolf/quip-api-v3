@@ -402,7 +402,7 @@ export const repeatPost: Handler = async ctx => {
 								$pull: {
 									posts: null
 								}
-						  }
+							}
 						: {}),
 					$addToSet: {
 						posts: createdRepeat._id
