@@ -3,43 +3,74 @@
 import { type } from "arktype";
 
 export const postCreateBody = type({
-	content: "string",
-	poll: type("string|undefined")
-		.pipe(value => {
+	content: "string?",
+	poll: type("string")
+		.pipe((value, ctx) => {
 			if (!value) {
 				return;
 			}
-			const parsed = JSON.parse(value) as {
-				first: string;
-				second: string;
-				third?: string;
-				fourth?: string;
-				duration: number;
-			};
-			const isValid = (() => {
-				if (typeof parsed === "object" && parsed !== null) {
-					if (typeof parsed.first !== "string") {
-						return false;
-					}
-					if (typeof parsed.second !== "string") {
-						return false;
-					}
-					if (typeof parsed.third !== "undefined" && typeof parsed.third !== "string") {
-						return false;
-					}
-					if (typeof parsed.fourth !== "undefined" && typeof parsed.fourth !== "string") {
-						return false;
-					}
-					if (typeof parsed.duration !== "number" || parsed.duration < 1800000 || parsed.duration > 604800000) {
-						return false;
-					}
+			try {
+				const parsed = JSON.parse(value) as {
+					first: string;
+					second: string;
+					third?: string;
+					fourth?: string;
+					duration?: number;
+				};
+				if (typeof parsed !== "object" || parsed === null) {
+					return ctx.error({
+						expected: "an object"
+					});
 				}
-				return true;
-			})();
-			if (isValid) {
+				const { first, second, third, fourth, duration } = parsed as {
+					first: string;
+					second: string;
+					third?: string;
+					fourth?: string;
+					duration?: number;
+				};
+				if (typeof first !== "string") {
+					return ctx.error({
+						path: ["poll.first"],
+						actual: first,
+						expected: "a string"
+					});
+				}
+				if (typeof second !== "string") {
+					return ctx.error({
+						path: ["poll.second"],
+						actual: second,
+						expected: "a string"
+					});
+				}
+				if (typeof third !== "undefined" && typeof third !== "string") {
+					return ctx.error({
+						path: ["poll.third"],
+						actual: third,
+						expected: "a string or undefined"
+					});
+				}
+				if (typeof fourth !== "undefined" && typeof fourth !== "string") {
+					return ctx.error({
+						path: ["poll.fourth"],
+						actual: fourth,
+						expected: "a string or undefined"
+					});
+				}
+				if (typeof duration === "undefined") {
+					parsed.duration = 86400000;
+				} else if (typeof duration !== "number" || duration < 1800000 || duration > 604800000) {
+					return ctx.error({
+						path: ["poll.duration"],
+						actual: duration as any,
+						expected: "a number between 1800000 and 604800000"
+					});
+				}
 				return parsed;
-			} else {
-				throw new Error("Invalid poll object");
+			} catch {
+				return ctx.error({
+					expected: "a valid JSON string"
+				});
 			}
 		})
 		.optional(),
@@ -50,40 +81,71 @@ export const postCreateBody = type({
 		.or("File")
 		.optional(),
 	"media-description": "string?",
-	location: type("string|undefined")
-		.pipe(value => {
+	location: type("string")
+		.pipe((value, ctx) => {
 			if (!value) {
 				return;
 			}
-			const parsed = JSON.parse(value) as {
-				type: "Point";
-				coordinates: [number, number];
-			};
-			const isValid = (() => {
-				if (typeof parsed === "object" && parsed !== null) {
-					if (parsed.type !== "Point") {
-						return false;
-					}
-					if (!Array.isArray(parsed.coordinates) || parsed.coordinates.length !== 2) {
-						return false;
-					}
-					const [longitude, latitude] = parsed.coordinates;
-					if (typeof longitude !== "number" || longitude < -180 || longitude > 180) {
-						return false;
-					}
-					if (typeof latitude !== "number" || latitude < -90 || latitude > 90) {
-						return false;
-					}
+			try {
+				const parsed = JSON.parse(value) as {
+					type: "Point";
+					coordinates: [number, number];
+				};
+				if (typeof parsed !== "object" || parsed === null) {
+					return ctx.error({
+						expected: "an object"
+					});
 				}
-				return true;
-			})();
-			if (isValid) {
+				const { type, coordinates } = parsed;
+				if (type !== "Point") {
+					return ctx.error({
+						path: ["location.type"],
+						actual: type,
+						expected: "Point"
+					});
+				}
+				if (!Array.isArray(coordinates) || coordinates.length !== 2) {
+					return ctx.error({
+						path: ["location.coordinates"],
+						actual: coordinates as any,
+						expected: "a [longitude, latitude] tuple"
+					});
+				}
+				const [longitude, latitude] = coordinates;
+				if (typeof longitude !== "number" || longitude < -180 || longitude > 180) {
+					return ctx.error({
+						path: ["location.coordinates[0]"],
+						actual: longitude as any,
+						expected: "a number between -180 and 180"
+					});
+				}
+				if (typeof latitude !== "number" || latitude < -90 || latitude > 90) {
+					return ctx.error({
+						path: ["location.coordinates[1]"],
+						actual: latitude as any,
+						expected: "a number between -90 and 90"
+					});
+				}
 				return parsed;
-			} else {
-				throw new Error("Invalid location object");
+			} catch {
+				return ctx.error({
+					expected: "a valid JSON string"
+				});
 			}
 		})
 		.optional()
+}).pipe((value, ctx) => {
+	if (!(value.content || value.media)) {
+		return ctx.error({
+			expected: "either content or media to be provided"
+		});
+	}
+	if (value.poll && !value.content) {
+		return ctx.error({
+			expected: "content to be provided when creating a poll"
+		});
+	}
+	return value;
 });
 export const postInteractParams = type({
 	postId: "string"
