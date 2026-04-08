@@ -3,8 +3,9 @@
 import { ObjectId } from "mongodb";
 import mongoose, { type HydratedDocument, type InferSchemaType } from "mongoose";
 import cld from "cld";
-import { v2 as cloudinary } from "cloudinary";
-import { emptyString, getUnicodeClusterCount, maxContentLength, nullId, quoteScore, replyScore, voteScore, repeatScore } from "../library.ts";
+import { v2 as cloudinary, type UploadApiErrorResponse, type UploadApiResponse } from "cloudinary";
+import { Readable } from "node:stream";
+import { emptyString, getUnicodeClusterCount, maxContentLength, getFileType, nullId, quoteScore, replyScore, voteScore, repeatScore } from "../library.ts";
 import postAggregationPipeline from "../db/pipelines/post.ts";
 import postQuotesAggregationPipeline from "../db/pipelines/post-quotes.ts";
 import postRepliesAggregationPipeline from "../db/pipelines/post-replies.ts";
@@ -100,14 +101,21 @@ export const updateMentionsAndHashtags = async (content: string, post: Partial<P
 	post.mentions = postMentions.size > 0 ? [...postMentions].map(mention => new ObjectId(mention) as MentionEntry) : undefined;
 	post.hashtags = postHashtags.size > 0 ? [...postHashtags] : undefined;
 };
-export const uploadFile = async (file: File) => {
-	const fileType = file.type;
-	const response = await cloudinary.uploader.upload(file.name, {
-		resource_type: fileType as any,
-		folder: `${fileType}s/`,
-		use_filename: true
+export const uploadFile = async (file: File): Promise<UploadApiResponse | UploadApiErrorResponse | undefined> => {
+	const fileType = getFileType(file.type);
+	return new Promise((resolve, reject) => {
+		const uploadStream = cloudinary.uploader.upload_stream(
+			{
+				resource_type: fileType as any,
+				folder: `${fileType}s`,
+				filename_override: file.name
+			},
+			(error, result) => {
+				error ? reject(error) : resolve(result);
+			}
+		);
+		Readable.from(file.stream()).pipe(uploadStream);
 	});
-	return response;
 };
 export const createPost: Handler = async ctx => {
 	const { req } = ctx;
@@ -128,8 +136,8 @@ export const createPost: Handler = async ctx => {
 				}),
 				...(media && {
 					mediaFile: {
-						fileType: (media as File).type,
-						src: (await uploadFile(media as File)).secure_url,
+						fileType: getFileType((media as File).type),
+						src: (await uploadFile(media as File))?.secure_url,
 						description: mediaDescription
 					}
 				})
@@ -333,8 +341,8 @@ export const quotePost: Handler = async ctx => {
 					}),
 					...(media && {
 						mediaFile: {
-							fileType: (media as File).type,
-							src: (await uploadFile(media as File)).secure_url,
+							fileType: getFileType((media as File).type),
+							src: (await uploadFile(media as File))?.secure_url,
 							description: mediaDescription
 						}
 					}),
@@ -402,7 +410,7 @@ export const repeatPost: Handler = async ctx => {
 								$pull: {
 									posts: null
 								}
-							}
+						  }
 						: {}),
 					$addToSet: {
 						posts: createdRepeat._id
@@ -487,8 +495,8 @@ export const replyToPost: Handler = async ctx => {
 						}),
 						...(media && {
 							mediaFile: {
-								fileType: (media as File).type,
-								src: (await uploadFile(media as File)).secure_url,
+								fileType: getFileType((media as File).type),
+								src: (await uploadFile(media as File))?.secure_url,
 								description: mediaDescription
 							}
 						})
