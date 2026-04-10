@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 
 const refreshTokenSchema = new Schema(
 	{
@@ -23,4 +23,4 @@ const refreshTokenSchema = new Schema(
 refreshTokenSchema.index({ token: 1, user: 1 });
 refreshTokenSchema.index({ lastUsed: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 180 });
 
-export default model<Document, Model<InferSchemaType<typeof refreshTokenSchema>>>("RefreshToken", refreshTokenSchema);
+export default model("RefreshToken", refreshTokenSchema);

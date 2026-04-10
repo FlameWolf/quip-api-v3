@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
 const mutedPostSchema = new Schema(
@@ -23,4 +23,4 @@ const mutedPostSchema = new Schema(
 mutedPostSchema.index({ mutedBy: 1, post: 1 }, { unique: true });
 mutedPostSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof mutedPostSchema>>>("MutedPost", mutedPostSchema);
+export default model("MutedPost", mutedPostSchema);

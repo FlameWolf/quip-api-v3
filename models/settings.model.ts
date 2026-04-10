@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
 const settingsSchema = new Schema(
@@ -58,4 +58,4 @@ const settingsSchema = new Schema(
 );
 settingsSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof settingsSchema>>>("Settings", settingsSchema);
+export default model("Settings", settingsSchema);

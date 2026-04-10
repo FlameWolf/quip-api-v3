@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import { emailRegExp } from "../library.ts";
 
 const emailVerificationSchema = new Schema(
@@ -31,4 +31,4 @@ const emailVerificationSchema = new Schema(
 );
 emailVerificationSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 });
 
-export default model<Document, Model<InferSchemaType<typeof emailVerificationSchema>>>("EmailVerification", emailVerificationSchema);
+export default model("EmailVerification", emailVerificationSchema);

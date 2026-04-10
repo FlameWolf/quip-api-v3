@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 import { maxContentLength, getUnicodeClusterCount } from "../library.ts";
 
@@ -32,4 +32,4 @@ const blockSchema = new Schema(
 blockSchema.index({ blockedBy: 1, user: 1 }, { unique: true });
 blockSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof blockSchema>>>("Block", blockSchema);
+export default model("Block", blockSchema);

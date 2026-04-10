@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import { handleRegExp, passwordRegExp, emailRegExp } from "../library.ts";
 import uniqueValidator from "mongoose-unique-validator";
 
@@ -67,4 +67,4 @@ const userSchema = new Schema(
 );
 userSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof userSchema>>>("User", userSchema);
+export default model("User", userSchema);

@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
 const followRequestSchema = new Schema(
@@ -23,4 +23,4 @@ const followRequestSchema = new Schema(
 followRequestSchema.index({ user: 1, requestedBy: 1 }, { unique: true });
 followRequestSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof followRequestSchema>>>("FollowRequest", followRequestSchema);
+export default model("FollowRequest", followRequestSchema);

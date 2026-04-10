@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 import { getUnicodeClusterCount, maxContentLength } from "../library.ts";
 import uniqueValidator from "mongoose-unique-validator";
 
@@ -32,4 +32,4 @@ const mutedUserSchema = new Schema(
 mutedUserSchema.index({ mutedBy: 1, user: 1 }, { unique: true });
 mutedUserSchema.plugin(uniqueValidator);
 
-export default model<Document, Model<InferSchemaType<typeof mutedUserSchema>>>("MutedUser", mutedUserSchema);
+export default model("MutedUser", mutedUserSchema);

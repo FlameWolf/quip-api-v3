@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, model, Document, Model, type InferSchemaType } from "mongoose";
+import { Schema, model } from "mongoose";
 
 const passwordResetSchema = new Schema(
 	{
@@ -21,4 +21,4 @@ const passwordResetSchema = new Schema(
 );
 passwordResetSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 7 });
 
-export default model<Document, Model<InferSchemaType<typeof passwordResetSchema>>>("PasswordReset", passwordResetSchema);
+export default model("PasswordReset", passwordResetSchema);

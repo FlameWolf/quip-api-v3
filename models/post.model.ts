@@ -1,7 +1,7 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
-import { Schema, SchemaTypes, model, type ValidateOpts, type InferSchemaType, Model } from "mongoose";
+import { Schema, SchemaTypes, model, type ValidateOpts } from "mongoose";
 import { maxContentLength, maxPollOptionLength, minPollDuration, maxPollDuration, getUnicodeClusterCount } from "../library.ts";
 
 const { Url, Point } = SchemaTypes;
@@ -128,4 +128,4 @@ postSchema.index(
 );
 postSchema.index({ createdAt: -1 });
 
-export default model<Document, Model<InferSchemaType<typeof postSchema>>>("Post", postSchema);
+export default model("Post", postSchema);

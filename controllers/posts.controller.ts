@@ -76,7 +76,7 @@ export const updateLanguages = async (post: Partial<PostModel> | DeepPartial<Pos
 	post.languages = Array.from(languages);
 };
 export const updateMentionsAndHashtags = async (content: string, post: Partial<PostModel> | DeepPartial<PostModel>) => {
-	const postMentions = new Set(post.mentions?.map((mention: MentionEntry) => mention?.toString()));
+	const postMentions = new Set(post.mentions?.map(mention => mention?.toString()));
 	const postHashtags = new Set(post.hashtags);
 	const contentMentions = content.match(/\B@\w+/g);
 	const contentHashtags = content.match(/\B#(\p{L}\p{M}?)+/gu);
@@ -122,18 +122,16 @@ export const createPost: Handler = async ctx => {
 	const { content = emptyString, poll, media, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
-		validateContent(content, poll, media as File);
+		validateContent(content, poll as PollModel, media as File);
 	} catch (err) {
 		return ctx.json(err, 400);
 	}
 	const model = {
 		content,
-		author: userId,
+		author: new ObjectId(userId),
 		...((poll || media) && {
 			attachments: {
-				...(poll && {
-					poll: JSON.parse(poll as PollModel)
-				}),
+				...(poll && { poll }),
 				...(media && {
 					mediaFile: {
 						fileType: getFileType((media as File).type),
@@ -143,9 +141,7 @@ export const createPost: Handler = async ctx => {
 				})
 			}
 		}),
-		...(location && {
-			location: JSON.parse(location as LocationModel)
-		})
+		...(location && { location })
 	};
 	await Promise.all([updateLanguages(model), content.trim() && updateMentionsAndHashtags(content, model)]);
 	const session = await mongoose.startSession();
@@ -320,7 +316,7 @@ export const quotePost: Handler = async ctx => {
 	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
-		validateContent(content, poll, media as File, postId);
+		validateContent(content, poll as PollModel, media as File, postId);
 	} catch (err) {
 		return ctx.json(err, 400);
 	}
@@ -334,11 +330,9 @@ export const quotePost: Handler = async ctx => {
 			const originalPostId = originalPost._id;
 			const model = {
 				content,
-				author: userId,
+				author: new ObjectId(userId),
 				attachments: {
-					...(poll && {
-						poll: JSON.parse(poll as PollModel)
-					}),
+					...(poll && { poll }),
 					...(media && {
 						mediaFile: {
 							fileType: getFileType((media as File).type),
@@ -349,9 +343,7 @@ export const quotePost: Handler = async ctx => {
 					post: originalPostId
 				},
 				languages: originalPost.languages,
-				...(location && {
-					location: JSON.parse(location as LocationModel)
-				}),
+				...(location && { location }),
 				mentions: [originalPost.author]
 			};
 			await Promise.all([updateLanguages(model), content.trim() && updateMentionsAndHashtags(content, model)]);
@@ -472,7 +464,7 @@ export const replyToPost: Handler = async ctx => {
 	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
 	const userId = (req.userInfo as UserInfo).userId;
 	try {
-		validateContent(content, poll, media as File);
+		validateContent(content, poll as PollModel, media as File);
 	} catch (err) {
 		return ctx.json(err, 400);
 	}
@@ -486,13 +478,11 @@ export const replyToPost: Handler = async ctx => {
 			const originalPostId = originalPost._id;
 			const model = {
 				content,
-				author: userId,
+				author: new ObjectId(userId),
 				replyTo: originalPostId,
 				...((poll || media) && {
 					attachments: {
-						...(poll && {
-							poll: JSON.parse(poll as PollModel)
-						}),
+						...(poll && { poll }),
 						...(media && {
 							mediaFile: {
 								fileType: getFileType((media as File).type),
@@ -502,9 +492,7 @@ export const replyToPost: Handler = async ctx => {
 						})
 					}
 				}),
-				...(location && {
-					location: JSON.parse(location as LocationModel)
-				}),
+				...(location && { location }),
 				mentions: [originalPost.author]
 			};
 			await Promise.all([updateLanguages(model), content.trim() && updateMentionsAndHashtags(content, model)]);
@@ -547,7 +535,7 @@ export const castVote: Handler = async ctx => {
 			return ctx.text("Post does not include a poll", 422);
 		}
 		const isOptionNota = option === "nota";
-		if (!(isOptionNota || poll[option])) {
+		if (!(isOptionNota || (poll as PollModel & Dictionary)[option])) {
 			return ctx.text("Poll does not include the specified option", 422);
 		}
 		if (post.author.toString() === userId) {
