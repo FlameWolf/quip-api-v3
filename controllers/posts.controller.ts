@@ -73,7 +73,7 @@ export const updateLanguages = async (post: Partial<PostModel> | DeepPartial<Pos
 			languages.add(language as LanguageEntry);
 		}
 	}
-	post.languages = [...languages];
+	post.languages = Array.from(languages);
 };
 export const updateMentionsAndHashtags = async (content: string, post: Partial<PostModel> | DeepPartial<PostModel>) => {
 	const postMentions = new Set(post.mentions?.map((mention: MentionEntry) => mention?.toString()));
@@ -98,8 +98,8 @@ export const updateMentionsAndHashtags = async (content: string, post: Partial<P
 	if (contentHashtags) {
 		contentHashtags.map(hashtag => hashtag.substring(1)).forEach(hashtag => postHashtags.add(hashtag as HashtagEntry));
 	}
-	post.mentions = postMentions.size > 0 ? [...postMentions].map(mention => new ObjectId(mention) as MentionEntry) : undefined;
-	post.hashtags = postHashtags.size > 0 ? [...postHashtags] : undefined;
+	post.mentions = postMentions.size > 0 ? Array.from(postMentions).map(mention => new ObjectId(mention) as MentionEntry) : undefined;
+	post.hashtags = postHashtags.size > 0 ? Array.from(postHashtags) : undefined;
 };
 export const uploadFile = async (file: File): Promise<UploadApiResponse | UploadApiErrorResponse | undefined> => {
 	const fileType = getFileType(file.type);
