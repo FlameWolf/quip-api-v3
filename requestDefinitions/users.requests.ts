@@ -40,15 +40,3 @@ export const userFollowRequestsQuery = type({
 export const userMentionsQuery = type({
 	lastMentionId: "string?"
 });
-
-export type UserInteractParams = typeof userInteractParams.inferOut;
-export type ActionReasonQuery = typeof actionReasonQuery.inferOut;
-export type UserPostsQuery = typeof userPostsQuery.inferOut;
-export type UserTopmostParams = typeof userTopmostParams.inferOut;
-export type UserTopmostQuery = typeof userTopmostQuery.inferOut;
-export type UserFavouritesQuery = typeof userFavouritesQuery.inferOut;
-export type UserVotesQuery = typeof userVotesQuery.inferOut;
-export type UserBookmarksQuery = typeof userBookmarksQuery.inferOut;
-export type UserFollowsQuery = typeof userFollowsQuery.inferOut;
-export type UserFollowRequestsQuery = typeof userFollowRequestsQuery.inferOut;
-export type UserMentionsQuery = typeof userMentionsQuery.inferOut;

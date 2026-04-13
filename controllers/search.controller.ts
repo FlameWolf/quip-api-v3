@@ -1,16 +1,17 @@
 "use strict";
 
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { searchNearbyQuery, searchQuery, searchUsersQuery } from "../requestDefinitions/search.requests.ts";
 import searchPostsAggregationPipeline from "../db/pipelines/search-posts.ts";
 import nearbyPostsAggregationPipeline from "../db/pipelines/nearby-posts.ts";
 import searchUsersAggregationPipeline from "../db/pipelines/search-users.ts";
 import Post from "../models/post.model.ts";
 import User from "../models/user.model.ts";
-import type { SearchNearbyQuery, SearchQuery, SearchUsersQuery } from "../requestDefinitions/search.requests.ts";
-import type { Handler } from "hono";
 
-export const searchPosts: Handler = async ctx => {
-	const { req } = ctx;
-	const { q: searchText, from, since, until, "has-media": hasMedia, "not-from": notFrom, "sort-by": sortBy, "date-order": dateOrder, replies, langs: languages, "langs-match": includeLanguages, "media-desc": mediaDescription, lastScore, lastPostId } = req.query() as SearchQuery;
+const factory = createFactory();
+export const searchPosts = factory.createHandlers(validator("query", searchQuery), async ctx => {
+	const { q: searchText, from, since, until, "has-media": hasMedia, "not-from": notFrom, "sort-by": sortBy, "date-order": dateOrder, replies, langs: languages, "langs-match": includeLanguages, "media-desc": mediaDescription, lastScore, lastPostId } = ctx.req.valid("query");
 	const posts = await Post.aggregate(
 		searchPostsAggregationPipeline(
 			searchText?.trim(),
@@ -27,25 +28,23 @@ export const searchPosts: Handler = async ctx => {
 			},
 			sortBy,
 			dateOrder,
-			(req.userInfo as UserInfo)?.userId,
+			(ctx.userInfo as UserInfo)?.userId,
 			lastScore,
 			lastPostId
 		)
 	);
 	return ctx.json({ posts }, 200);
-};
-export const nearbyPosts: Handler = async ctx => {
-	const { req } = ctx;
-	const { long: longitude, lat: latitude, "max-dist": maxDistance, lastDistance, lastPostId } = req.query() as SearchNearbyQuery & Dictionary;
-	const posts = await Post.aggregate(nearbyPostsAggregationPipeline([longitude, latitude], maxDistance, (req.userInfo as UserInfo)?.userId, lastDistance, lastPostId));
+});
+export const nearbyPosts = factory.createHandlers(validator("query", searchNearbyQuery), async ctx => {
+	const { long: longitude, lat: latitude, "max-dist": maxDistance, lastDistance, lastPostId } = ctx.req.valid("query");
+	const posts = await Post.aggregate(nearbyPostsAggregationPipeline([longitude, latitude], maxDistance, (ctx.userInfo as UserInfo)?.userId, lastDistance, lastPostId));
 	return ctx.json({ posts }, 200);
-};
-export const searchUsers: Handler = async ctx => {
-	const { req } = ctx;
-	const { q: searchText, match, "date-order": dateOrder, lastUserId } = req.query() as SearchUsersQuery;
+});
+export const searchUsers = factory.createHandlers(validator("query", searchUsersQuery), async ctx => {
+	const { q: searchText, match, "date-order": dateOrder, lastUserId } = ctx.req.valid("query");
 	if (!searchText) {
 		return ctx.text("Search text missing", 400);
 	}
-	const users = await User.aggregate(searchUsersAggregationPipeline(searchText, match, dateOrder, (req.userInfo as UserInfo)?.userId, lastUserId));
+	const users = await User.aggregate(searchUsersAggregationPipeline(searchText, match, dateOrder, (ctx.userInfo as UserInfo)?.userId, lastUserId));
 	return ctx.json({ users }, 200);
-};
+});

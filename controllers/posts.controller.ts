@@ -2,6 +2,9 @@
 
 import { ObjectId } from "mongodb";
 import mongoose, { type HydratedDocument, type InferSchemaType } from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { postCreateBody, postInteractParams, postQuotesQuery, postRepliesQuery, postUpdateBody, postVoteQuery } from "../requestDefinitions/posts.requests.ts";
 import cld from "cld";
 import { v2 as cloudinary, type UploadApiErrorResponse, type UploadApiResponse } from "cloudinary";
 import { Readable } from "node:stream";
@@ -16,17 +19,15 @@ import User from "../models/user.model.ts";
 import Favourite from "../models/favourite.model.ts";
 import Bookmark from "../models/bookmark.model.ts";
 import MutedPost from "../models/muted.post.model.ts";
-import type { PostCreateBody, PostUpdateBody } from "../requestDefinitions/posts.requests.ts";
-import type { Handler } from "hono";
 
 type PostModel = InferSchemaType<typeof Post.schema>;
 type AttachmentsModel = Required<PostModel>["attachments"];
 type PollModel = Required<AttachmentsModel & Dictionary>["poll"];
-type LocationModel = Required<PostModel>["location"];
 type LanguageEntry = InferArrayElementType<PostModel["languages"]>;
 type MentionEntry = InferArrayElementType<PostModel["mentions"]>;
 type HashtagEntry = InferArrayElementType<PostModel["hashtags"]>;
 
+const factory = createFactory();
 export const findPostById = async (postId: string | ObjectId): Promise<HydratedDocument<PostModel>> => {
 	const post = await Post.findById(postId);
 	const repeatPost = post?.repeatPost;
@@ -117,10 +118,9 @@ export const uploadFile = async (file: File): Promise<UploadApiResponse | Upload
 		Readable.from(file.stream()).pipe(uploadStream);
 	});
 };
-export const createPost: Handler = async ctx => {
-	const { req } = ctx;
-	const { content = emptyString, poll, media, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
-	const userId = (req.userInfo as UserInfo).userId;
+export const createPost = factory.createHandlers(validator("form", postCreateBody), async ctx => {
+	const { content = emptyString, poll, media, "media-description": mediaDescription, location } = ctx.req.valid("form");
+	const { userId } = ctx.userInfo as UserInfo;
 	try {
 		validateContent(content, poll as PollModel, media as File);
 	} catch (err) {
@@ -164,12 +164,12 @@ export const createPost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const updatePost: Handler = async ctx => {
+});
+export const updatePost = factory.createHandlers(validator("param", postInteractParams), validator("json", postUpdateBody), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const content = ((await req.json()) as PostUpdateBody).content || emptyString;
-	const userId = (req.userInfo as UserInfo).userId;
+	const { postId } = req.valid("param");
+	const { content = emptyString } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		if (!content.trim()) {
@@ -255,10 +255,9 @@ export const updatePost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const getPost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId") as string;
+});
+export const getPost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
 	const originalPost = await findPostById(postId);
 	if (!originalPost) {
 		return ctx.text("Post not found", 404);
@@ -270,36 +269,35 @@ export const getPost: Handler = async ctx => {
 					_id: new ObjectId(originalPost._id)
 				}
 			},
-			...postAggregationPipeline((req.userInfo as UserInfo)?.userId)
+			...postAggregationPipeline((ctx.userInfo as UserInfo)?.userId)
 		])
 	).shift();
 	return ctx.json({ post }, 200);
-};
-export const getPostQuotes: Handler = async ctx => {
+});
+export const getPostQuotes = factory.createHandlers(validator("param", postInteractParams), validator("query", postQuotesQuery), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const lastQuoteId = req.query("lastQuoteId");
+	const { postId } = req.valid("param");
+	const { lastQuoteId } = req.valid("query");
 	const post = await findPostById(postId);
 	if (!post) {
 		return ctx.text("Post not found", 404);
 	}
-	const quotes = await Post.aggregate(postQuotesAggregationPipeline(post._id, (req.userInfo as UserInfo)?.userId, lastQuoteId as string));
+	const quotes = await Post.aggregate(postQuotesAggregationPipeline(post._id, (ctx.userInfo as UserInfo)?.userId, lastQuoteId as string));
 	return ctx.json({ quotes }, 200);
-};
-export const getPostReplies: Handler = async ctx => {
+});
+export const getPostReplies = factory.createHandlers(validator("param", postInteractParams), validator("query", postRepliesQuery), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
+	const { postId } = req.valid("param");
 	const lastReplyId = req.query("lastReplyId");
 	const post = await findPostById(postId);
 	if (!post) {
 		return ctx.text("Post not found", 404);
 	}
-	const replies = await Post.aggregate(postRepliesAggregationPipeline(post._id, (req.userInfo as UserInfo)?.userId, lastReplyId as string));
+	const replies = await Post.aggregate(postRepliesAggregationPipeline(post._id, (ctx.userInfo as UserInfo)?.userId, lastReplyId as string));
 	return ctx.json({ replies }, 200);
-};
-export const getPostParent: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId") as string;
+});
+export const getPostParent = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
 	const post = await findPostById(postId);
 	if (!post) {
 		return ctx.text("Post not found", 404);
@@ -307,14 +305,14 @@ export const getPostParent: Handler = async ctx => {
 	if (!post.replyTo) {
 		return ctx.text("Post is not a reply", 422);
 	}
-	const parent = (await Post.aggregate(postParentAggregationPipeline(post._id, (req.userInfo as UserInfo)?.userId))).shift();
+	const parent = (await Post.aggregate(postParentAggregationPipeline(post._id, (ctx.userInfo as UserInfo)?.userId))).shift();
 	return ctx.json({ parent }, 200);
-};
-export const quotePost: Handler = async ctx => {
+});
+export const quotePost = factory.createHandlers(validator("param", postInteractParams), validator("form", postCreateBody), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
-	const userId = (req.userInfo as UserInfo).userId;
+	const { postId } = req.valid("param");
+	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = ctx.req.valid("form");
+	const { userId } = ctx.userInfo as UserInfo;
 	try {
 		validateContent(content, poll as PollModel, media as File, postId);
 	} catch (err) {
@@ -370,11 +368,10 @@ export const quotePost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const repeatPost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const repeatPost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const originalPost = await findPostById(postId);
@@ -402,7 +399,7 @@ export const repeatPost: Handler = async ctx => {
 								$pull: {
 									posts: null
 								}
-						  }
+							}
 						: {}),
 					$addToSet: {
 						posts: createdRepeat._id
@@ -422,11 +419,10 @@ export const repeatPost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unrepeatPost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId");
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const unrepeatPost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const unrepeated = await session.withTransaction(async () => {
@@ -457,12 +453,12 @@ export const unrepeatPost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const replyToPost: Handler = async ctx => {
+});
+export const replyToPost = factory.createHandlers(validator("param", postInteractParams), validator("form", postCreateBody), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = (await req.parseBody()) as PostCreateBody & Dictionary;
-	const userId = (req.userInfo as UserInfo).userId;
+	const { postId } = req.valid("param");
+	const { content = emptyString, media, poll, "media-description": mediaDescription, location } = ctx.req.valid("form");
+	const { userId } = ctx.userInfo as UserInfo;
 	try {
 		validateContent(content, poll as PollModel, media as File);
 	} catch (err) {
@@ -518,12 +514,12 @@ export const replyToPost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const castVote: Handler = async ctx => {
+});
+export const castVote = factory.createHandlers(validator("param", postInteractParams), validator("query", postVoteQuery), async ctx => {
 	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const option = req.query("option") as string;
-	const userId = (req.userInfo as UserInfo).userId;
+	const { postId } = req.valid("param");
+	const { option } = req.valid("query");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const post = await findPostById(postId);
@@ -566,11 +562,10 @@ export const castVote: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const deletePost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId");
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const deletePost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const post = await Post.findById(postId);
@@ -648,4 +643,4 @@ export const deletePost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

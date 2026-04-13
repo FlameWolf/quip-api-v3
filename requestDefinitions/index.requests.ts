@@ -41,15 +41,3 @@ export const resetPasswordParams = type({
 export const resetPasswordBody = type({
 	password: "string"
 });
-
-export type TimelineQuery = typeof timelineQuery.inferOut;
-export type ActivityParams = typeof activityParams.inferOut;
-export type ActivityQuery = typeof activityQuery.inferOut;
-export type TopmostParams = typeof topmostParams.inferOut;
-export type TopmostQuery = typeof topmostQuery.inferOut;
-export type HashtagParams = typeof hashtagParams.inferOut;
-export type HashtagQuery = typeof hashtagQuery.inferOut;
-export type EmailApprovalParams = typeof emailApprovalParams.inferOut;
-export type ForgotPasswordBody = typeof forgotPasswordBody.inferOut;
-export type ResetPasswordParams = typeof resetPasswordParams.inferOut;
-export type ResetPasswordBody = typeof resetPasswordBody.inferOut;

@@ -1,16 +1,18 @@
 "use strict";
 
 import mongoose from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { postInteractParams } from "../requestDefinitions/posts.requests.ts";
 import { favouriteScore } from "../library.ts";
 import Post from "../models/post.model.ts";
 import Favourite from "../models/favourite.model.ts";
 import * as postsController from "./posts.controller.ts";
-import type { Handler } from "hono";
 
-export const addFavourite: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const userId = (req.userInfo as UserInfo).userId;
+const factory = createFactory();
+export const addFavourite = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const post = await postsController.findPostById(postId);
@@ -34,11 +36,10 @@ export const addFavourite: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const removeFavourite: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId");
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const removeFavourite = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const unfavourited = await session.withTransaction(async () => {
@@ -59,4 +60,4 @@ export const removeFavourite: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

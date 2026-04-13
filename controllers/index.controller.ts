@@ -3,6 +3,9 @@
 import { ObjectId } from "mongodb";
 import mongoose, { type InferSchemaType, type HydratedDocument } from "mongoose";
 import bcrypt from "bcrypt";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { activityParams, activityQuery, emailApprovalParams, forgotPasswordBody, hashtagParams, hashtagQuery, resetPasswordBody, resetPasswordParams, timelineQuery, topmostParams, topmostQuery } from "../requestDefinitions/index.requests.ts";
 import { noReplyEmail, emailTemplates, passwordRegExp, rounds } from "../library.ts";
 import timelineAggregationPipeline from "../db/pipelines/timeline.ts";
 import activityAggregationPipeline from "../db/pipelines/activity.ts";
@@ -13,44 +16,42 @@ import Post from "../models/post.model.ts";
 import EmailVerification from "../models/email-verification.model.ts";
 import PasswordReset from "../models/password-reset.model.ts";
 import * as emailController from "./email.controller.ts";
-import type { ForgotPasswordBody, HashtagQuery, ResetPasswordBody, TimelineQuery, TopmostQuery } from "../requestDefinitions/index.requests.ts";
-import type { Handler } from "hono";
 
 type UserModel = InferSchemaType<typeof User.schema>;
 type EmailVerificationModel = InferSchemaType<typeof EmailVerification.schema>;
 type PasswordResetModel = InferSchemaType<typeof PasswordReset.schema>;
 
-export const timeline: Handler = async ctx => {
-	const { req } = ctx;
-	const { includeRepeats, includeReplies, lastPostId } = req.query() as TimelineQuery;
-	const userId = (req.userInfo as UserInfo).userId;
+const factory = createFactory();
+export const timeline = factory.createHandlers(validator("query", timelineQuery), async ctx => {
+	const { includeRepeats, includeReplies, lastPostId } = ctx.req.valid("query");
+	const { userId } = ctx.userInfo as UserInfo;
 	const posts = await User.aggregate(timelineAggregationPipeline(userId, includeRepeats !== "false", includeReplies !== "false", lastPostId));
 	return ctx.json({ posts }, 200);
-};
-export const activity: Handler = async ctx => {
+});
+export const activity = factory.createHandlers(validator("param", activityParams), validator("query", activityQuery), async ctx => {
 	const { req } = ctx;
-	const period = req.param("period");
-	const lastEntryId = req.query("lastEntryId");
-	const userId = (req.userInfo as UserInfo).userId;
+	const { period } = req.valid("param");
+	const { lastEntryId } = req.valid("query");
+	const { userId } = ctx.userInfo as UserInfo;
 	const entries = await User.aggregate(activityAggregationPipeline(userId, period, lastEntryId as string));
 	return ctx.json({ entries }, 200);
-};
-export const topmost: Handler = async ctx => {
+});
+export const topmost = factory.createHandlers(validator("param", topmostParams), validator("query", topmostQuery), async ctx => {
 	const { req } = ctx;
-	const period = req.param("period");
-	const { lastScore, lastPostId } = req.query() as TopmostQuery;
-	const posts = await Post.aggregate(topmostAggregationPipeline((req.userInfo as UserInfo)?.userId, period, lastScore, lastPostId));
+	const { period } = req.valid("param");
+	const { lastScore, lastPostId } = req.valid("query");
+	const posts = await Post.aggregate(topmostAggregationPipeline((ctx.userInfo as UserInfo)?.userId, period, lastScore, lastPostId));
 	return ctx.json({ posts }, 200);
-};
-export const hashtag: Handler = async ctx => {
+});
+export const hashtag = factory.createHandlers(validator("param", hashtagParams), validator("query", hashtagQuery), async ctx => {
 	const { req } = ctx;
-	const tagName = req.param("name") as string;
-	const { sortBy, lastScore, lastPostId } = req.query() as HashtagQuery;
-	const posts = await Post.aggregate(hashtagAggregationPipeline(tagName, (req.userInfo as UserInfo)?.userId, sortBy, lastScore, lastPostId));
+	const { name: tagName } = req.valid("param");
+	const { sortBy, lastScore, lastPostId } = req.valid("query");
+	const posts = await Post.aggregate(hashtagAggregationPipeline(tagName, (ctx.userInfo as UserInfo)?.userId, sortBy, lastScore, lastPostId));
 	return ctx.json({ posts }, 200);
-};
-export const rejectEmail: Handler = async ctx => {
-	const token = ctx.req.param("token");
+});
+export const rejectEmail = factory.createHandlers(validator("param", emailApprovalParams), async ctx => {
+	const { token } = ctx.req.valid("param");
 	const session = await mongoose.startSession();
 	try {
 		const emailVerification = await EmailVerification.findOne({ token });
@@ -70,9 +71,9 @@ export const rejectEmail: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const verifyEmail: Handler = async ctx => {
-	const token = ctx.req.param("token");
+});
+export const verifyEmail = factory.createHandlers(validator("param", emailApprovalParams), async ctx => {
+	const { token } = ctx.req.valid("param");
 	const emailVerification = await EmailVerification.findOne({ token });
 	if (!emailVerification) {
 		return ctx.text("Verification token not found or expired", 404);
@@ -81,9 +82,9 @@ export const verifyEmail: Handler = async ctx => {
 	const user = (await User.findByIdAndUpdate(emailVerification.user, { email })) as HydratedDocument<UserModel>;
 	await emailController.sendEmail(noReplyEmail, email, "Email address change verified", emailTemplates.notifications.emailVerified(user.handle, email));
 	return ctx.status(200);
-};
-export const forgotPassword: Handler = async ctx => {
-	const { handle, email } = (await ctx.req.json()) as ForgotPasswordBody;
+});
+export const forgotPassword = factory.createHandlers(validator("json", forgotPasswordBody), async ctx => {
+	const { handle, email } = ctx.req.valid("json");
 	const user = await User.findOne({ handle, deleted: false }).select("+email");
 	if (!user) {
 		return ctx.text("User not found", 400);
@@ -97,11 +98,11 @@ export const forgotPassword: Handler = async ctx => {
 	}).save();
 	await emailController.sendEmail(noReplyEmail, email, "Reset password", emailTemplates.actions.resetPassword(handle, `${process.env.ALLOW_ORIGIN}/reset-password/${passwordReset.token}`));
 	return ctx.json({ passwordReset }, 200);
-};
-export const resetPassword: Handler = async ctx => {
+});
+export const resetPassword = factory.createHandlers(validator("param", resetPasswordParams), validator("json", resetPasswordBody), async ctx => {
 	const { req } = ctx;
-	const token = req.param("token");
-	const password = ((await req.json()) as ResetPasswordBody).password;
+	const { token } = req.valid("param");
+	const { password } = req.valid("json");
 	const session = await mongoose.startSession();
 	try {
 		const passwordReset = await PasswordReset.findOne({ token });
@@ -122,4 +123,4 @@ export const resetPassword: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

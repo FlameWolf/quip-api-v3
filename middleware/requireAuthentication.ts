@@ -1,12 +1,13 @@
 "use strict";
 
-import type { Handler } from "hono";
+import { createFactory } from "hono/factory";
 
-const requireAuthentication: Handler = async (ctx, next) => {
-	if (!ctx.req.userInfo) {
+const factory = createFactory();
+const requireAuthentication = factory.createMiddleware(async (ctx, next) => {
+	if (!ctx.userInfo) {
 		return ctx.status(401);
 	}
 	await next();
-};
+});
 
 export default requireAuthentication;

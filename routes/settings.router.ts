@@ -1,40 +1,36 @@
 "use strict";
 
+import { Hono } from "hono";
 import requireAuthentication from "../middleware/requireAuthentication.ts";
-import { validator } from "hono-openapi";
-import { blockedUsersQuery, changePasswordBody, followRequestsBody, settingInteractParams, mutedItemsQuery, requestApprovalParams, settingBody, updateEmailBody, updateSettingQuery, wordMuteBody } from "../requestDefinitions/settings.requests.ts";
-import { userFollowRequestsQuery } from "../requestDefinitions/users.requests.ts";
 import * as settingsController from "../controllers/settings.controller.ts";
 import * as mutesController from "../controllers/mutes.controller.ts";
 import * as usersController from "../controllers/users.controller.ts";
 import * as followRequestsController from "../controllers/follow-requests.controller.ts";
-import type { Hono } from "hono";
 
-export default (basePath: Hono) => {
-	basePath.use(requireAuthentication);
-	basePath.post("/", validator("json", settingBody), settingsController.updateSettings);
-	basePath.get("/", settingsController.getSettings);
-	basePath.post("/mute", validator("json", wordMuteBody), mutesController.muteWord);
-	basePath.post("/unmute", validator("json", wordMuteBody), mutesController.unmuteWord);
-	basePath.post("/sent-reqs", validator("query", userFollowRequestsQuery), usersController.getUserFollowRequestsSent);
-	basePath.post("/received-reqs", validator("query", userFollowRequestsQuery), usersController.getUserFollowRequestsReceived);
-	basePath.get("/accept-req/:requestId", followRequestsController.acceptFollowRequest);
-	basePath.post("/accept-reqs", validator("json", followRequestsBody), followRequestsController.acceptSelectedFollowRequests);
-	basePath.get("/accept-all-reqs", followRequestsController.acceptAllFollowRequests);
-	basePath.get("/reject-req/:requestId", followRequestsController.rejectFollowRequest);
-	basePath.post("/reject-reqs", validator("json", followRequestsBody), followRequestsController.rejectSelectedFollowRequests);
-	basePath.get("/reject-all-reqs", followRequestsController.rejectAllFollowRequests);
-	basePath.get("/blocked", validator("query", blockedUsersQuery), usersController.getBlocks);
-	basePath.get("/muted/users", validator("query", mutedItemsQuery), usersController.getMutedUsers);
-	basePath.get("/muted/posts", validator("query", mutedItemsQuery), usersController.getMutedPosts);
-	basePath.get("/muted/words", validator("query", mutedItemsQuery), usersController.getMutedWords);
-	basePath.get("/pin/:postId", usersController.pinPost);
-	basePath.get("/unpin", usersController.unpinPost);
-	basePath.post("/update-email", validator("json", updateEmailBody), usersController.updateEmail);
-	basePath.post("/change-password", validator("json", changePasswordBody), usersController.changePassword);
-	basePath.get("/deactivate", usersController.deactivateUser);
-	basePath.get("/activate", usersController.activateUser);
-	basePath.delete("/delete", usersController.deleteUser);
-	basePath.put("/:path", validator("query", updateSettingQuery), settingsController.updateSettingByPath);
-	basePath.get("/:path", settingsController.getSettingByPath);
-};
+export default new Hono()
+	.use(requireAuthentication)
+	.post("/", ...settingsController.updateSettings)
+	.get("/", ...settingsController.getSettings)
+	.post("/mute", ...mutesController.muteWord)
+	.post("/unmute", ...mutesController.unmuteWord)
+	.post("/sent-reqs", ...usersController.getUserFollowRequestsSent)
+	.post("/received-reqs", ...usersController.getUserFollowRequestsReceived)
+	.get("/accept-req/:requestId", ...followRequestsController.acceptFollowRequest)
+	.post("/accept-reqs", ...followRequestsController.acceptSelectedFollowRequests)
+	.get("/accept-all-reqs", ...followRequestsController.acceptAllFollowRequests)
+	.get("/reject-req/:requestId", ...followRequestsController.rejectFollowRequest)
+	.post("/reject-reqs", ...followRequestsController.rejectSelectedFollowRequests)
+	.get("/reject-all-reqs", ...followRequestsController.rejectAllFollowRequests)
+	.get("/blocked", ...usersController.getBlocks)
+	.get("/muted/users", ...usersController.getMutedUsers)
+	.get("/muted/posts", ...usersController.getMutedPosts)
+	.get("/muted/words", ...usersController.getMutedWords)
+	.get("/pin/:postId", ...usersController.pinPost)
+	.get("/unpin", ...usersController.unpinPost)
+	.post("/update-email", ...usersController.updateEmail)
+	.post("/change-password", ...usersController.changePassword)
+	.get("/deactivate", ...usersController.deactivateUser)
+	.get("/activate", ...usersController.activateUser)
+	.delete("/delete", ...usersController.deleteUser)
+	.put("/:path", ...settingsController.updateSettingByPath)
+	.get("/:path", ...settingsController.getSettingByPath);

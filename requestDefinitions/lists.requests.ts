@@ -32,11 +32,3 @@ export const listPostsQuery = type({
 	includeReplies: type("string|boolean").optional(),
 	lastPostId: "string?"
 });
-
-export type ListsQuery = typeof listsQuery.inferOut;
-export type ListCreateBody = typeof listCreateBody.inferOut;
-export type ListUpdateBody = typeof listUpdateBody.inferOut;
-export type ListMemberBody = typeof listMemberBody.inferOut;
-export type ListInteractParams = typeof listInteractParams.inferOut;
-export type ListMembersQuery = typeof listMembersQuery.inferOut;
-export type ListPostsQuery = typeof listPostsQuery.inferOut;

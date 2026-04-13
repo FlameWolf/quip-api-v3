@@ -1,7 +1,7 @@
 import type { HonoRequest } from "hono/request";
 
 declare module "hono" {
-	declare interface HonoRequest {
+	declare interface Context {
 		userInfo?: UserInfo;
 	}
 }

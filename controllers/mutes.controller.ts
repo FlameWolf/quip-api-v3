@@ -1,15 +1,19 @@
 "use strict";
 
 import mongoose from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { actionReasonQuery, userInteractParams } from "../requestDefinitions/users.requests.ts";
+import { postInteractParams } from "../requestDefinitions/posts.requests.ts";
+import { wordMuteBody } from "../requestDefinitions/settings.requests.ts";
 import User from "../models/user.model.ts";
 import MutedUser from "../models/muted.user.model.ts";
 import MutedPost from "../models/muted.post.model.ts";
 import MutedWord from "../models/muted.word.model.ts";
 import * as usersController from "./users.controller.ts";
 import * as postsController from "./posts.controller.ts";
-import type { WordMuteBody } from "../requestDefinitions/settings.requests.ts";
-import type { Handler } from "hono";
 
+const factory = createFactory();
 const getMutedWordRegExp = (word: string, match: string) => {
 	switch (match) {
 		case "startsWith":
@@ -22,11 +26,11 @@ const getMutedWordRegExp = (word: string, match: string) => {
 			return word;
 	}
 };
-export const muteUser: Handler = async ctx => {
+export const muteUser = factory.createHandlers(validator("param", userInteractParams), validator("query", actionReasonQuery), async ctx => {
 	const { req } = ctx;
-	const muteeHandle = req.param("handle") as string;
-	const muteReason = req.query("reason");
-	const { handle: muterHandle, userId: muterUserId } = req.userInfo as UserInfo;
+	const { handle: muteeHandle } = req.valid("param");
+	const { reason: muteReason } = req.valid("query");
+	const { handle: muterHandle, userId: muterUserId } = ctx.userInfo as UserInfo;
 	if (muteeHandle === muterHandle) {
 		return ctx.text("User cannot mute themselves", 422);
 	}
@@ -54,11 +58,10 @@ export const muteUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unmuteUser: Handler = async ctx => {
-	const { req } = ctx;
-	const unmuteeHandle = req.param("handle") as string;
-	const { handle: unmuterHandle, userId: unmuterUserId } = req.userInfo as UserInfo;
+});
+export const unmuteUser = factory.createHandlers(validator("param", userInteractParams), async ctx => {
+	const { handle: unmuteeHandle } = ctx.req.valid("param");
+	const { handle: unmuterHandle, userId: unmuterUserId } = ctx.userInfo as UserInfo;
 	if (unmuteeHandle === unmuterHandle) {
 		return ctx.text("User cannot unmute themselves", 422);
 	}
@@ -84,11 +87,10 @@ export const unmuteUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const mutePost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId") as string;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const mutePost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const post = await postsController.findPostById(postId);
 	if (!post) {
 		return ctx.text("Post not found", 404);
@@ -108,11 +110,10 @@ export const mutePost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unmutePost: Handler = async ctx => {
-	const { req } = ctx;
-	const postId = req.param("postId");
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const unmutePost = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const unmuted = await session.withTransaction(async () => {
@@ -130,11 +131,10 @@ export const unmutePost: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const muteWord: Handler = async ctx => {
-	const { req } = ctx;
-	const { word, match } = (await req.json()) as WordMuteBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const muteWord = factory.createHandlers(validator("json", wordMuteBody), async ctx => {
+	const { word, match } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const muted = await session.withTransaction(async () => {
@@ -150,11 +150,10 @@ export const muteWord: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unmuteWord: Handler = async ctx => {
-	const { req } = ctx;
-	const { word, match } = (await req.json()) as WordMuteBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const unmuteWord = factory.createHandlers(validator("json", wordMuteBody), async ctx => {
+	const { word, match } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const unmuted = await session.withTransaction(async () => {
@@ -172,4 +171,4 @@ export const unmuteWord: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

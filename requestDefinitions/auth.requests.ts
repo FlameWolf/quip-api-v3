@@ -16,8 +16,3 @@ export const refreshTokenBody = type({
 export const revokeTokenParams = type({
 	token: "string"
 });
-
-export type CredentialsBody = typeof credentialsBody.inferOut;
-export type RefreshTokenHeaders = typeof refreshTokenHeaders.inferOut;
-export type RefreshTokenBody = typeof refreshTokenBody.inferOut;
-export type RevokeTokenParams = typeof revokeTokenParams.inferOut;

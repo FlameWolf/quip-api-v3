@@ -31,7 +31,3 @@ export const searchUsersQuery = type({
 	"date-order": type.enumerated("desc", "asc").optional(),
 	lastUserId: "string?"
 });
-
-export type SearchQuery = typeof searchQuery.inferOut;
-export type SearchNearbyQuery = typeof searchNearbyQuery.inferOut;
-export type SearchUsersQuery = typeof searchUsersQuery.inferOut;

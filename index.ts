@@ -78,20 +78,20 @@ if (!isProdEnv) {
 		})
 	);
 }
-app.use(async ({ req }, next) => {
+app.use(async (ctx, next) => {
 	try {
-		const authToken = req.header("Authorization")?.replace(/^bearer\s+/i, emptyString);
-		req.userInfo = (authToken && jwt.verify(authToken, process.env.JWT_AUTH_SECRET as string)) as UserInfo;
+		const authToken = ctx.req.header("Authorization")?.replace(/^bearer\s+/i, emptyString);
+		ctx.userInfo = (authToken && jwt.verify(authToken, process.env.JWT_AUTH_SECRET as string)) as UserInfo;
 	} catch {}
 	await next();
 });
-(await import("./routes/index.router.ts")).default(app);
-(await import("./routes/auth.router.ts")).default(app.basePath("/auth"));
-(await import("./routes/users.router.ts")).default(app.basePath("/users"));
-(await import("./routes/lists.router.ts")).default(app.basePath("/lists"));
-(await import("./routes/posts.router.ts")).default(app.basePath("/posts"));
-(await import("./routes/search.router.ts")).default(app.basePath("/search"));
-(await import("./routes/settings.router.ts")).default(app.basePath("/settings"));
+app.route("/", (await import("./routes/index.router.ts")).default);
+app.route("/auth", (await import("./routes/auth.router.ts")).default);
+app.route("/users", (await import("./routes/users.router.ts")).default);
+app.route("/lists", (await import("./routes/lists.router.ts")).default);
+app.route("/posts", (await import("./routes/posts.router.ts")).default);
+app.route("/search", (await import("./routes/search.router.ts")).default);
+app.route("/settings", (await import("./routes/settings.router.ts")).default);
 app.onError(async (err, ctx) => {
 	return ctx.json(err, 500);
 });

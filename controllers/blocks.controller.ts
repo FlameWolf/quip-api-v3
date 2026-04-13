@@ -1,6 +1,9 @@
 "use strict";
 
 import mongoose from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { actionReasonQuery, userInteractParams } from "../requestDefinitions/users.requests.ts";
 import FollowRequest from "../models/follow-request.model.ts";
 import Follow from "../models/follow.model.ts";
 import List from "../models/list.model.ts";
@@ -8,13 +11,13 @@ import ListMember from "../models/list-member.model.ts";
 import User from "../models/user.model.ts";
 import Block from "../models/block.model.ts";
 import * as usersController from "./users.controller.ts";
-import type { Handler } from "hono";
 
-export const blockUser: Handler = async ctx => {
+const factory = createFactory();
+export const blockUser = factory.createHandlers(validator("param", userInteractParams), validator("query", actionReasonQuery), async ctx => {
 	const { req } = ctx;
-	const blockeeHandle = req.param("handle") as string;
-	const blockReason = req.query("reason");
-	const { handle: blockerHandle, userId: blockerUserId } = req.userInfo as UserInfo;
+	const { handle: blockeeHandle } = req.valid("param");
+	const { reason: blockReason } = req.valid("query");
+	const { handle: blockerHandle, userId: blockerUserId } = ctx.userInfo as UserInfo;
 	if (blockeeHandle === blockerHandle) {
 		return ctx.text("User cannot block themselves", 422);
 	}
@@ -87,11 +90,10 @@ export const blockUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unblockUser: Handler = async ctx => {
-	const { req } = ctx;
-	const unblockeeHandle = req.param("handle") as string;
-	const { handle: unblockerHandle, userId: unblockerUserId } = req.userInfo as UserInfo;
+});
+export const unblockUser = factory.createHandlers(validator("param", userInteractParams), async ctx => {
+	const { handle: unblockeeHandle } = ctx.req.valid("param");
+	const { handle: unblockerHandle, userId: unblockerUserId } = ctx.userInfo as UserInfo;
 	if (unblockeeHandle === unblockerHandle) {
 		return ctx.text("User cannot unblock themselves", 422);
 	}
@@ -117,4 +119,4 @@ export const unblockUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

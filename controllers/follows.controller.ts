@@ -1,17 +1,19 @@
 "use strict";
 
 import mongoose from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { userInteractParams } from "../requestDefinitions/users.requests.ts";
 import Block from "../models/block.model.ts";
 import User from "../models/user.model.ts";
 import FollowRequest from "../models/follow-request.model.ts";
 import Follow from "../models/follow.model.ts";
 import * as usersController from "./users.controller.ts";
-import type { Handler } from "hono";
 
-export const followUser: Handler = async ctx => {
-	const { req } = ctx;
-	const followeeHandle = req.param("handle") as string;
-	const { handle: followerHandle, userId: followerUserId } = req.userInfo as UserInfo;
+const factory = createFactory();
+export const followUser = factory.createHandlers(validator("param", userInteractParams), async ctx => {
+	const { handle: followeeHandle } = ctx.req.valid("param");
+	const { handle: followerHandle, userId: followerUserId } = ctx.userInfo as UserInfo;
 	if (followeeHandle === followerHandle) {
 		return ctx.text("User cannot follow themselves", 422);
 	}
@@ -51,11 +53,10 @@ export const followUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const unfollowUser: Handler = async ctx => {
-	const { req } = ctx;
-	const unfolloweeHandle = req.param("handle") as string;
-	const { handle: unfollowerHandle, userId: unfollowerUserId } = req.userInfo as UserInfo;
+});
+export const unfollowUser = factory.createHandlers(validator("param", userInteractParams), async ctx => {
+	const { handle: unfolloweeHandle } = ctx.req.valid("param");
+	const { handle: unfollowerHandle, userId: unfollowerUserId } = ctx.userInfo as UserInfo;
 	if (unfolloweeHandle === unfollowerHandle) {
 		return ctx.text("User cannot unfollow themselves", 422);
 	}
@@ -81,4 +82,4 @@ export const unfollowUser: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

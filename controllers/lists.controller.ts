@@ -2,27 +2,27 @@
 
 import { ObjectId } from "mongodb";
 import mongoose from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { listCreateBody, listInteractParams, listMemberBody, listPostsQuery, listUpdateBody } from "../requestDefinitions/lists.requests.ts";
 import listPostsAggregationPipeline from "../db/pipelines/list-posts.ts";
 import Follow from "../models/follow.model.ts";
 import Block from "../models/block.model.ts";
 import List from "../models/list.model.ts";
 import ListMember from "../models/list-member.model.ts";
 import * as usersController from "./users.controller.ts";
-import type { ListCreateBody, ListMemberBody, ListPostsQuery, ListUpdateBody } from "../requestDefinitions/lists.requests.ts";
-import type { Handler } from "hono";
 
+const factory = createFactory();
 export const findListPostsByNameAndOwnerId = async (listName: string, ownerId: string | ObjectId, includeRepeats = true, includeReplies = true, lastPostId?: string | ObjectId) => await List.aggregate(listPostsAggregationPipeline(listName, ownerId, includeRepeats, includeReplies, lastPostId));
-export const createList: Handler = async ctx => {
-	const { req } = ctx;
-	const { name, includeRepeats, includeReplies } = (await req.json()) as ListCreateBody;
-	const userId = (req.userInfo as UserInfo).userId;
+export const createList = factory.createHandlers(validator("json", listCreateBody), async ctx => {
+	const { name, includeRepeats, includeReplies } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const list = await new List({ name, owner: userId, includeRepeats, includeReplies }).save();
 	return ctx.json({ list }, 201);
-};
-export const updateList: Handler = async ctx => {
-	const { req } = ctx;
-	const { name, newName, includeRepeats, includeReplies } = (await req.json()) as ListUpdateBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const updateList = factory.createHandlers(validator("json", listUpdateBody), async ctx => {
+	const { name, newName, includeRepeats, includeReplies } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const filter = { name, owner: userId };
 	if (!(await List.countDocuments(filter))) {
 		return ctx.text("List not found", 404);
@@ -34,11 +34,10 @@ export const updateList: Handler = async ctx => {
 	}
 	const updated = await List.findOneAndUpdate(filter, { name: newName, includeRepeats, includeReplies }, { new: true });
 	return ctx.json({ updated }, 200);
-};
-export const addMember: Handler = async ctx => {
-	const { req } = ctx;
-	const { name, handle } = (await req.json()) as ListMemberBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const addMember = factory.createHandlers(validator("json", listMemberBody), async ctx => {
+	const { name, handle } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const list = await List.findOne({ name, owner: userId });
 	if (!list) {
 		return ctx.text("List not found", 404);
@@ -76,11 +75,10 @@ export const addMember: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const removeMember: Handler = async ctx => {
-	const { req } = ctx;
-	const { name, handle } = (await req.json()) as ListMemberBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const removeMember = factory.createHandlers(validator("json", listMemberBody), async ctx => {
+	const { name, handle } = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const list = await List.findOne({ name, owner: userId });
 	if (!list) {
 		return ctx.text("List not found", 404);
@@ -109,19 +107,18 @@ export const removeMember: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const getPosts: Handler = async ctx => {
+});
+export const getPosts = factory.createHandlers(validator("param", listInteractParams), validator("query", listPostsQuery), async ctx => {
 	const { req } = ctx;
-	const name = req.param("name") as string;
-	const { includeRepeats, includeReplies, lastPostId } = req.query() as ListPostsQuery;
-	const userId = (req.userInfo as UserInfo).userId;
+	const { name } = req.valid("param");
+	const { includeRepeats, includeReplies, lastPostId } = req.valid("query");
+	const { userId } = ctx.userInfo as UserInfo;
 	const posts = await findListPostsByNameAndOwnerId(name, userId, includeRepeats !== "false", includeReplies !== "false", lastPostId as string);
 	return ctx.json({ posts }, 200);
-};
-export const deleteList: Handler = async ctx => {
-	const { req } = ctx;
-	const name = req.param("name");
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const deleteList = factory.createHandlers(validator("param", listInteractParams), async ctx => {
+	const { name } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const deleted = await session.withTransaction(async () => {
@@ -135,4 +132,4 @@ export const deleteList: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
+});

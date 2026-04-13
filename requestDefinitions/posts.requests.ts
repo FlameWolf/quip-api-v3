@@ -162,10 +162,3 @@ export const postQuotesQuery = type({
 export const postRepliesQuery = type({
 	lastReplyId: "string?"
 });
-
-export type PostCreateBody = typeof postCreateBody.inferOut;
-export type PostInteractParams = typeof postInteractParams.inferOut;
-export type PostUpdateBody = typeof postUpdateBody.inferOut;
-export type PostVoteQuery = typeof postVoteQuery.inferOut;
-export type PostQuotesQuery = typeof postQuotesQuery.inferOut;
-export type PostRepliesQuery = typeof postRepliesQuery.inferOut;

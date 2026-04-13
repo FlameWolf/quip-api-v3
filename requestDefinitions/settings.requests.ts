@@ -32,14 +32,3 @@ export const settingInteractParams = type({
 export const updateSettingQuery = type({
 	value: "string"
 });
-
-export type SettingBody = typeof settingBody.inferOut;
-export type WordMuteBody = typeof wordMuteBody.inferOut;
-export type RequestApprovalParams = typeof requestApprovalParams.inferOut;
-export type FollowRequestsBody = typeof followRequestsBody.inferOut;
-export type BlockedUsersQuery = typeof blockedUsersQuery.inferOut;
-export type MutedItemsQuery = typeof mutedItemsQuery.inferOut;
-export type UpdateEmailBody = typeof updateEmailBody.inferOut;
-export type ChangePasswordBody = typeof changePasswordBody.inferOut;
-export type SettingInteractParams = typeof settingInteractParams.inferOut;
-export type UpdateSettingQuery = typeof updateSettingQuery.inferOut;

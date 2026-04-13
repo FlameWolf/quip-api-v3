@@ -1,11 +1,13 @@
 "use strict";
 
 import { ObjectId } from "mongodb";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { settingBody, settingInteractParams, updateSettingQuery } from "../requestDefinitions/settings.requests.ts";
 import { setProperty, getProperty } from "../library.ts";
 import Settings from "../models/settings.model.ts";
-import type { SettingBody } from "../requestDefinitions/settings.requests.ts";
-import type { Handler } from "hono";
 
+const factory = createFactory();
 export const getSettingsByUserId = async (userId: string | ObjectId) => {
 	const param = { user: userId };
 	const settings = await Settings.findOne(param);
@@ -25,32 +27,30 @@ export const updateSettingsByUserId = async (userId: string | ObjectId, settings
 			upsert: true
 		}
 	);
-export const getSettings: Handler = async ctx => {
-	const userId = (ctx.req.userInfo as UserInfo).userId;
+export const getSettings = factory.createHandlers(async ctx => {
+	const { userId } = ctx.userInfo as UserInfo;
 	return ctx.json({ settings: await getSettingsByUserId(userId) }, 200);
-};
-export const getSettingByPath: Handler = async ctx => {
-	const { req } = ctx;
-	const path = req.path;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const getSettingByPath = factory.createHandlers(validator("param", settingInteractParams), async ctx => {
+	const { path } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
 	const settings = await getSettingsByUserId(userId);
 	const value = getProperty(settings, path);
 	return ctx.json({ [path]: value }, 200);
-};
-export const updateSettings: Handler = async ctx => {
-	const { req } = ctx;
-	const settings = (await req.json()) as SettingBody;
-	const userId = (req.userInfo as UserInfo).userId;
+});
+export const updateSettings = factory.createHandlers(validator("json", settingBody), async ctx => {
+	const settings = ctx.req.valid("json");
+	const { userId } = ctx.userInfo as UserInfo;
 	const updated = await updateSettingsByUserId(userId, settings);
 	return ctx.json({ updated }, 200);
-};
-export const updateSettingByPath: Handler = async ctx => {
+});
+export const updateSettingByPath = factory.createHandlers(validator("param", settingInteractParams), validator("query", updateSettingQuery), async ctx => {
 	const { req } = ctx;
-	const path = req.path;
-	const value = req.query("value");
-	const userId = (req.userInfo as UserInfo).userId;
+	const { path } = req.valid("param");
+	const { value } = req.valid("query");
+	const { userId } = ctx.userInfo as UserInfo;
 	const settings = {};
 	setProperty(settings, path, value);
 	const updated = await updateSettingsByUserId(userId, settings);
 	return ctx.json({ updated }, 200);
-};
+});

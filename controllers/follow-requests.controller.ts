@@ -1,18 +1,20 @@
 "use strict";
 
 import mongoose, { type InferSchemaType, type HydratedDocument } from "mongoose";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { followRequestsBody, requestApprovalParams } from "../requestDefinitions/settings.requests.ts";
+import { userInteractParams } from "../requestDefinitions/users.requests.ts";
 import FollowRequest from "../models/follow-request.model.ts";
 import Follow from "../models/follow.model.ts";
 import * as usersController from "./users.controller.ts";
-import type { FollowRequestsBody } from "../requestDefinitions/settings.requests.ts";
-import type { Handler } from "hono";
 
 type FollowRequestModel = InferSchemaType<typeof FollowRequest.schema>;
 
-export const acceptFollowRequest: Handler = async ctx => {
-	const { req } = ctx;
-	const followRequestId = req.param("requestId") as string;
-	const acceptorUserId = (req.userInfo as UserInfo).userId;
+const factory = createFactory();
+export const acceptFollowRequest = factory.createHandlers(validator("param", requestApprovalParams), async ctx => {
+	const { requestId: followRequestId } = ctx.req.valid("param");
+	const { userId: acceptorUserId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const followRequest = (await FollowRequest.findOne(
@@ -39,11 +41,10 @@ export const acceptFollowRequest: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const acceptSelectedFollowRequests: Handler = async ctx => {
-	const { req } = ctx;
-	const followRequestIds = ((await req.json()) as FollowRequestsBody).requestIds;
-	const acceptorUserId = (req.userInfo as UserInfo).userId;
+});
+export const acceptSelectedFollowRequests = factory.createHandlers(validator("json", followRequestsBody), async ctx => {
+	const { requestIds: followRequestIds } = ctx.req.valid("json");
+	const { userId: acceptorUserId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const acceptedRequestsCount = await session.withTransaction(async () => {
@@ -70,9 +71,9 @@ export const acceptSelectedFollowRequests: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const acceptAllFollowRequests: Handler = async ctx => {
-	const acceptorUserId = (ctx.req.userInfo as UserInfo).userId;
+});
+export const acceptAllFollowRequests = factory.createHandlers(async ctx => {
+	const { userId: acceptorUserId } = ctx.userInfo as UserInfo;
 	const session = await mongoose.startSession();
 	try {
 		const batchSize = 65536;
@@ -103,11 +104,10 @@ export const acceptAllFollowRequests: Handler = async ctx => {
 	} finally {
 		await session.endSession();
 	}
-};
-export const cancelFollowRequest: Handler = async ctx => {
-	const { req } = ctx;
-	const handle = req.param("handle") as string;
-	const cancellerUserId = (req.userInfo as UserInfo).userId;
+});
+export const cancelFollowRequest = factory.createHandlers(validator("param", userInteractParams), async ctx => {
+	const handle = ctx.req.param("handle") as string;
+	const { userId: cancellerUserId } = ctx.userInfo as UserInfo;
 	const user = await usersController.findUserByHandle(handle);
 	if (!user) {
 		return ctx.text("User not found", 404);
@@ -117,21 +117,19 @@ export const cancelFollowRequest: Handler = async ctx => {
 		requestedBy: cancellerUserId
 	});
 	return ctx.json({ cancelled }, 200);
-};
-export const rejectFollowRequest: Handler = async ctx => {
-	const { req } = ctx;
-	const followRequestId = req.param("requestId");
-	const rejectorUserId = (req.userInfo as UserInfo).userId;
+});
+export const rejectFollowRequest = factory.createHandlers(validator("param", requestApprovalParams), async ctx => {
+	const followRequestId = ctx.req.param("requestId");
+	const { userId: rejectorUserId } = ctx.userInfo as UserInfo;
 	const rejected = await FollowRequest.findOneAndDelete({
 		user: rejectorUserId,
 		_id: followRequestId
 	});
 	return ctx.json({ rejected }, 200);
-};
-export const rejectSelectedFollowRequests: Handler = async ctx => {
-	const { req } = ctx;
-	const followRequestIds = ((await req.json()) as FollowRequestsBody).requestIds;
-	const rejectorUserId = (req.userInfo as UserInfo).userId;
+});
+export const rejectSelectedFollowRequests = factory.createHandlers(validator("json", followRequestsBody), async ctx => {
+	const { requestIds: followRequestIds } = ctx.req.valid("json");
+	const { userId: rejectorUserId } = ctx.userInfo as UserInfo;
 	const result = await FollowRequest.deleteMany({
 		user: rejectorUserId,
 		_id: {
@@ -139,9 +137,9 @@ export const rejectSelectedFollowRequests: Handler = async ctx => {
 		}
 	});
 	return ctx.json({ rejectedRequestsCount: result.deletedCount }, 200);
-};
-export const rejectAllFollowRequests: Handler = async ctx => {
-	const rejectorUserId = (ctx.req.userInfo as UserInfo).userId;
+});
+export const rejectAllFollowRequests = factory.createHandlers(async ctx => {
+	const { userId: rejectorUserId } = ctx.userInfo as UserInfo;
 	const result = await FollowRequest.deleteMany({ user: rejectorUserId });
 	return ctx.json({ rejectedRequestsCount: result.deletedCount }, 200);
-};
+});

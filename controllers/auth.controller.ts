@@ -2,12 +2,14 @@
 
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { createFactory } from "hono/factory";
+import { validator } from "hono-openapi";
+import { credentialsBody, refreshTokenBody, refreshTokenHeaders, revokeTokenParams } from "../requestDefinitions/auth.requests.ts";
 import { invalidHandles, handleRegExp, passwordRegExp, rounds, authTokenLife } from "../library.ts";
 import User from "../models/user.model.ts";
 import RefreshToken from "../models/refresh-token.model.ts";
-import type { CredentialsBody, RefreshTokenBody, RefreshTokenHeaders } from "../requestDefinitions/auth.requests.ts";
-import type { Handler } from "hono";
 
+const factory = createFactory();
 const generateAuthToken = (handle: string, userId: string) => {
 	return jwt.sign({ handle, userId }, process.env.JWT_AUTH_SECRET as string, { expiresIn: authTokenLife });
 };
@@ -38,8 +40,8 @@ const authSuccess = async (handle: string, userId: string, includeRefreshToken =
 	}
 	return payload;
 };
-export const signUp: Handler = async ctx => {
-	const { handle, password } = (await ctx.req.json()) as CredentialsBody;
+export const signUp = factory.createHandlers(validator("json", credentialsBody), async ctx => {
+	const { handle, password } = ctx.req.valid("json");
 	if (!(validateHandle(handle) && validatePassword(password))) {
 		return ctx.text("Invalid username/password", 400);
 	}
@@ -50,9 +52,9 @@ export const signUp: Handler = async ctx => {
 	const user = await new User({ handle, password: passwordHash }).save();
 	const userId = user._id;
 	return ctx.json(await authSuccess(user.handle, userId.toString()), 201);
-};
-export const signIn: Handler = async ctx => {
-	const { handle, password } = (await ctx.req.json()) as CredentialsBody;
+});
+export const signIn = factory.createHandlers(validator("json", credentialsBody), async ctx => {
+	const { handle, password } = ctx.req.valid("json");
 	const user = await User.findOne({ handle }).select("+password");
 	if (!user) {
 		return ctx.text("User not found", 404);
@@ -63,10 +65,10 @@ export const signIn: Handler = async ctx => {
 	}
 	const userId = user._id;
 	return ctx.json(await authSuccess(user.handle, userId.toString()), 200);
-};
-export const refreshAuthToken: Handler = async ctx => {
-	const { refreshToken } = (await ctx.req.json()) as RefreshTokenBody;
-	const { "x-slug": handle, "x-uid": userId } = ctx.req.header() as RefreshTokenHeaders;
+});
+export const refreshAuthToken = factory.createHandlers(validator("header", refreshTokenHeaders), validator("json", refreshTokenBody), async ctx => {
+	const { refreshToken } = ctx.req.valid("json");
+	const { "x-slug": handle, "x-uid": userId } = ctx.req.valid("header");
 	const userInfo = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET as string) as UserInfo;
 	const filter = { user: userId, token: refreshToken };
 	if (userInfo.handle !== handle || userInfo.userId !== userId) {
@@ -77,8 +79,9 @@ export const refreshAuthToken: Handler = async ctx => {
 	}
 	await RefreshToken.findOneAndUpdate(filter, { lastUsed: new Date() });
 	return ctx.json(await authSuccess(handle, userId, false), 200);
-};
-export const revokeRefreshToken: Handler = async ctx => {
-	const deleted = await RefreshToken.findOneAndDelete({ token: ctx.req.param("token") });
+});
+export const revokeRefreshToken = factory.createHandlers(validator("param", revokeTokenParams), async ctx => {
+	const { token } = ctx.req.valid("param");
+	const deleted = await RefreshToken.findOneAndDelete({ token });
 	return ctx.status(deleted ? 200 : 404);
-};
+});
