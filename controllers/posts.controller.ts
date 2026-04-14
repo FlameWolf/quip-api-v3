@@ -8,7 +8,7 @@ import { postCreateBody, postInteractParams, postQuotesQuery, postRepliesQuery, 
 import cld from "cld";
 import { v2 as cloudinary, type UploadApiErrorResponse, type UploadApiResponse } from "cloudinary";
 import { Readable } from "node:stream";
-import { emptyString, getUnicodeClusterCount, maxContentLength, getFileType, nullId, quoteScore, replyScore, voteScore, repeatScore } from "../library.ts";
+import { emptyString, getUnicodeClusterCount, maxContentLength, getFileType, nullId, quoteScore, replyScore, voteScore, repeatScore, maxRowsPerFetch } from "../library.ts";
 import postAggregationPipeline from "../db/pipelines/post.ts";
 import postQuotesAggregationPipeline from "../db/pipelines/post-quotes.ts";
 import postRepliesAggregationPipeline from "../db/pipelines/post-replies.ts";
@@ -296,6 +296,41 @@ export const getPostReplies = factory.createHandlers(validator("param", postInte
 	const replies = await Post.aggregate(postRepliesAggregationPipeline(post._id, (ctx.userInfo as UserInfo)?.userId, lastReplyId as string));
 	return ctx.json({ replies }, 200);
 });
+export const getPostThread = factory.createHandlers(validator("param", postInteractParams), async ctx => {
+	const { postId } = ctx.req.valid("param");
+	const { userId } = ctx.userInfo as UserInfo;
+	const post = await findPostById(postId);
+	if (!post) {
+		return ctx.text("Post not found", 404);
+	}
+	let nextPost = post;
+	const thread = [];
+	while (thread.length < maxRowsPerFetch) {
+		nextPost = (await Post.findOne({
+			replyTo: nextPost._id,
+			author: nextPost.author
+		})) as HydratedDocument<PostModel>;
+		if (!nextPost) {
+			break;
+		}
+		thread.push(nextPost);
+	}
+	const replies = (
+		await Promise.all(
+			thread.map(x =>
+				Post.aggregate([
+					{
+						$match: {
+							_id: x._id
+						}
+					},
+					...postAggregationPipeline(userId)
+				])
+			)
+		)
+	).flat();
+	return ctx.json({ replies }, 200);
+});
 export const getPostParent = factory.createHandlers(validator("param", postInteractParams), async ctx => {
 	const { postId } = ctx.req.valid("param");
 	const post = await findPostById(postId);
@@ -399,7 +434,7 @@ export const repeatPost = factory.createHandlers(validator("param", postInteract
 								$pull: {
 									posts: null
 								}
-							}
+						  }
 						: {}),
 					$addToSet: {
 						posts: createdRepeat._id
