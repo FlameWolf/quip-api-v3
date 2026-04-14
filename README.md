@@ -38,7 +38,7 @@ A RESTful API for a social network application similar to Twitter, built with No
 
     ```sh
     git clone <repo-url>
-    cd quip-api-v2
+    cd quip-api-v3
     ```
 
 2. Install dependencies:
