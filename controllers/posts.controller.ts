@@ -12,6 +12,7 @@ import { emptyString, getUnicodeClusterCount, maxContentLength, getFileType, nul
 import postAggregationPipeline from "../db/pipelines/post.ts";
 import postQuotesAggregationPipeline from "../db/pipelines/post-quotes.ts";
 import postRepliesAggregationPipeline from "../db/pipelines/post-replies.ts";
+import postThreadAggregationPipeline from "../db/pipelines/post-thread.ts";
 import postParentAggregationPipeline from "../db/pipelines/post-parent.ts";
 import Post from "../models/post.model.ts";
 import Vote from "../models/vote.model.ts";
@@ -298,37 +299,11 @@ export const getPostReplies = factory.createHandlers(validator("param", postInte
 });
 export const getPostThread = factory.createHandlers(validator("param", postInteractParams), async ctx => {
 	const { postId } = ctx.req.valid("param");
-	const { userId } = ctx.userInfo as UserInfo;
 	const post = await findPostById(postId);
 	if (!post) {
 		return ctx.text("Post not found", 404);
 	}
-	let nextPost = post;
-	const thread = [];
-	while (thread.length < maxRowsPerFetch) {
-		nextPost = (await Post.findOne({
-			replyTo: nextPost._id,
-			author: nextPost.author
-		})) as HydratedDocument<PostModel>;
-		if (!nextPost) {
-			break;
-		}
-		thread.push(nextPost);
-	}
-	const replies = (
-		await Promise.all(
-			thread.map(x =>
-				Post.aggregate([
-					{
-						$match: {
-							_id: x._id
-						}
-					},
-					...postAggregationPipeline(userId)
-				])
-			)
-		)
-	).flat();
+	const replies = await Post.aggregate(postThreadAggregationPipeline(post._id, post.author, (ctx.userInfo as UserInfo)?.userId));
 	return ctx.json({ replies }, 200);
 });
 export const getPostParent = factory.createHandlers(validator("param", postInteractParams), async ctx => {
