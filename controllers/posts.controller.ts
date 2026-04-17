@@ -110,7 +110,8 @@ export const uploadFile = async (file: File): Promise<UploadApiResponse | Upload
 			{
 				resource_type: fileType as any,
 				folder: `${fileType}s`,
-				filename_override: file.name
+				filename_override: file.name,
+				use_filename: true
 			},
 			(error, result) => {
 				error ? reject(error) : resolve(result);
