@@ -57,12 +57,35 @@ const timelineAggregationPipeline = (userId: string | ObjectId, includeRepeats: 
 						$match: Object.keys(matchConditions).length ? matchConditions : ({ $expr: true } as any)
 					},
 					{
-						$sort: {
-							createdAt: -1
+						$limit: maxCacheSize
+					},
+					{
+						$addFields: {
+							effectiveId: {
+								$ifNull: ["$repeatPost", "$_id"]
+							}
 						}
 					},
 					{
-						$limit: maxCacheSize
+						$group: {
+							_id: "$effectiveId",
+							post: {
+								$first: "$$ROOT"
+							}
+						}
+					},
+					{
+						$replaceRoot: {
+							newRoot: "$post"
+						}
+					},
+					{
+						$unset: "effectiveId"
+					},
+					{
+						$sort: {
+							createdAt: -1
+						}
 					},
 					...filterRepeatsAggregationPipeline(includeRepeats),
 					...(filtersAggregationPipeline(userId) as Array<any>),
@@ -73,7 +96,7 @@ const timelineAggregationPipeline = (userId: string | ObjectId, includeRepeats: 
 										$lt: new ObjectId(lastPostId)
 									}
 								}
-							: ({ $expr: true } as any)
+							: { $expr: true }
 					},
 					{
 						$limit: maxRowsPerFetch
