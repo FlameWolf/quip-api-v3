@@ -7,6 +7,7 @@ import filtersAggregationPipeline from "./filters.ts";
 import postAggregationPipeline from "./post.ts";
 import type { PipelineStage } from "mongoose";
 
+const cutOffDate = new Date(new Date().getTime() - 72 * 60 * 60 * 1000);
 const timelineAggregationPipeline = (userId: string | ObjectId, includeRepeats: boolean = true, includeReplies: boolean = true, lastPostId?: string | ObjectId): Array<PipelineStage> => {
 	const matchConditions = {
 		...(!includeRepeats && {
@@ -61,9 +62,57 @@ const timelineAggregationPipeline = (userId: string | ObjectId, includeRepeats: 
 					},
 					{
 						$addFields: {
-							effectiveId: {
-								$ifNull: ["$repeatPost", "$_id"]
+							effectiveId: { $ifNull: ["$repeatPost", "$_id"] },
+							isRepeat: {
+								$ne: [{ $ifNull: ["$repeatPost", null] }, null]
 							}
+						}
+					},
+					{
+						$addFields: {
+							priority: {
+								$switch: {
+									branches: [
+										{
+											case: {
+												$and: [
+													"$isRepeat",
+													{
+														$eq: ["$author", userId]
+													},
+													{
+														$gt: ["$createdAt", cutOffDate]
+													}
+												]
+											},
+											then: 1
+										},
+										{
+											case: {
+												$and: [
+													"$isRepeat",
+													{
+														$lte: ["$createdAt", cutOffDate]
+													}
+												]
+											},
+											then: 2
+										},
+										{
+											case: { $not: "$isRepeat" },
+											then: 3
+										}
+									],
+									default: 4
+								}
+							}
+						}
+					},
+					{
+						$sort: {
+							effectiveId: 1,
+							priority: 1,
+							createdDate: -1
 						}
 					},
 					{
@@ -80,7 +129,7 @@ const timelineAggregationPipeline = (userId: string | ObjectId, includeRepeats: 
 						}
 					},
 					{
-						$unset: "effectiveId"
+						$unset: ["effectiveId", "isRepeat", "priority"]
 					},
 					{
 						$sort: {
