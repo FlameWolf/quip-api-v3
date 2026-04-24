@@ -67,7 +67,7 @@ export const rejectEmail = factory.createHandlers(validator("param", emailApprov
 		if (previousEmail) {
 			await emailController.sendEmail(noReplyEmail, previousEmail, "Email address change rejected", emailTemplates.notifications.emailRejected(user.handle, emailVerification.email as string));
 		}
-		return ctx.status(200);
+		return ctx.body(null, 200);
 	} finally {
 		await session.endSession();
 	}
@@ -81,7 +81,7 @@ export const verifyEmail = factory.createHandlers(validator("param", emailApprov
 	const email = emailVerification.email as string;
 	const user = (await User.findByIdAndUpdate(emailVerification.user, { email })) as HydratedDocument<UserModel>;
 	await emailController.sendEmail(noReplyEmail, email, "Email address change verified", emailTemplates.notifications.emailVerified(user.handle, email));
-	return ctx.status(200);
+	return ctx.body(null, 200);
 });
 export const forgotPassword = factory.createHandlers(validator("json", forgotPasswordBody), async ctx => {
 	const { handle, email } = ctx.req.valid("json");
@@ -119,7 +119,7 @@ export const resetPassword = factory.createHandlers(validator("param", resetPass
 			return updatedUser;
 		});
 		await emailController.sendEmail(noReplyEmail, user.email as string, "Password reset", emailTemplates.notifications.passwordReset(user.handle));
-		return ctx.status(200);
+		return ctx.body(null, 200);
 	} finally {
 		await session.endSession();
 	}

@@ -8,13 +8,13 @@ export const timelineQuery = type({
 	lastPostId: "string?"
 });
 export const activityParams = type({
-	period: type.enumerated("day", "week", "month").optional()
+	period: type.enumerated("?", "day", "week", "month").optional()
 });
 export const activityQuery = type({
 	lastEntryId: "string?"
 });
 export const topmostParams = type({
-	period: type.enumerated("day", "week", "month", "year", "all").optional()
+	period: type.enumerated("?", "day", "week", "month", "year", "all").optional()
 });
 export const topmostQuery = type({
 	lastScore: "number?",

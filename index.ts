@@ -36,7 +36,7 @@ app.use(async (ctx, next) => {
 	res.headers.set("Access-Control-Allow-Headers", "Authorization, Origin, X-Requested-With, Content-Type, Accept, X-Slug, X-UID");
 	res.headers.set("Access-Control-Allow-Methods", "OPTIONS, POST, PUT, PATCH, GET, DELETE");
 	if (req.method === "OPTIONS") {
-		return ctx.status(200);
+		return ctx.body(null, 200);
 	}
 	await next();
 });

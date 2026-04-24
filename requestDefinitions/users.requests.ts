@@ -15,7 +15,7 @@ export const userPostsQuery = type({
 });
 export const userTopmostParams = userInteractParams.and(
 	type({
-		period: type.enumerated("day", "week", "month", "year", "all").optional()
+		period: type.enumerated("?", "day", "week", "month", "year", "all").optional()
 	})
 );
 export const userTopmostQuery = type({

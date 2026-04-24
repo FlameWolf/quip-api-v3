@@ -136,7 +136,7 @@ export const getUserFavourites = factory.createHandlers(validator("param", userI
 	const { lastFavouriteId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const favourites = await findFavouritesByUserId(userInfo.userId, lastFavouriteId as string);
 	return ctx.json({ favourites }, 200);
@@ -147,7 +147,7 @@ export const getUserVotes = factory.createHandlers(validator("param", userIntera
 	const { lastVoteId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const votes = await findVotesByUserId(userInfo.userId, lastVoteId as string);
 	return ctx.json({ votes }, 200);
@@ -158,7 +158,7 @@ export const getUserBookmarks = factory.createHandlers(validator("param", userIn
 	const { lastBookmarkId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const bookmarks = await findBookmarksByUserId(userInfo.userId, lastBookmarkId as string);
 	return ctx.json({ bookmarks }, 200);
@@ -169,7 +169,7 @@ export const getUserFollowing = factory.createHandlers(validator("param", userIn
 	const { lastFollowId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const following = await findFollowingByUserId(userInfo.userId, lastFollowId as string);
 	return ctx.json({ following }, 200);
@@ -180,7 +180,7 @@ export const getUserFollowers = factory.createHandlers(validator("param", userIn
 	const { lastFollowId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const followers = await findFollowersByUserId(userInfo.userId, lastFollowId as string);
 	return ctx.json({ followers }, 200);
@@ -191,7 +191,7 @@ export const getUserFollowRequestsSent = factory.createHandlers(validator("param
 	const { lastFollowRequestId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const followRequests = await findFollowRequestsSentByUserId(userInfo.userId, lastFollowRequestId as string);
 	return ctx.json({ followRequests }, 200);
@@ -202,7 +202,7 @@ export const getUserFollowRequestsReceived = factory.createHandlers(validator("p
 	const { lastFollowRequestId } = req.valid("query");
 	const userInfo = ctx.userInfo as UserInfo;
 	if (userInfo.handle !== handle) {
-		return ctx.status(401);
+		return ctx.body(null, 401);
 	}
 	const followRequests = await findFollowRequestsReceivedByUserId(userInfo.userId, lastFollowRequestId as string);
 	return ctx.json({ followRequests }, 200);
@@ -318,7 +318,7 @@ export const changePassword = factory.createHandlers(validator("json", changePas
 	if (email) {
 		await emailController.sendEmail(noReplyEmail, email, "Password changed", emailTemplates.notifications.passwordChanged(user.handle));
 	}
-	return ctx.status(200);
+	return ctx.body(null, 200);
 });
 export const deactivateUser = factory.createHandlers(async ctx => {
 	const { userId } = ctx.userInfo as UserInfo;

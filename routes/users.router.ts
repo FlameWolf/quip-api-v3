@@ -11,7 +11,7 @@ import * as blocksController from "../controllers/blocks.controller.ts";
 export default new Hono()
 	.get("/:handle", ...usersController.getUser)
 	.get("/:handle/posts", ...usersController.getUserPosts)
-	.get("/:handle/topmost/:period", ...usersController.getUserTopmost)
+	.get("/:handle/topmost/:period?", ...usersController.getUserTopmost)
 	.get("/:handle/mentions", ...usersController.getUserMentions)
 	.get("/follow/:handle", requireAuthentication, ...followsController.followUser)
 	.get("/cancel-req/:handle", requireAuthentication, ...followRequestsController.cancelFollowRequest)

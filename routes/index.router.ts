@@ -15,15 +15,15 @@ export default new Hono()
 			if (process.env.NODE_ENV !== "production") {
 				return ctx.redirect("/swagger");
 			}
-			return ctx.status(404);
+			return ctx.body(null, 404);
 		}
 	)
 	.get("/health", async ctx => {
 		return ctx.text("OK", 200);
 	})
 	.get("/timeline", requireAuthentication, ...indexController.timeline)
-	.get("/activity/:period", requireAuthentication, ...indexController.activity)
-	.get("/topmost/:period", ...indexController.topmost)
+	.get("/activity/:period?", requireAuthentication, ...indexController.activity)
+	.get("/topmost/:period?", ...indexController.topmost)
 	.get("/hashtag/:name", ...indexController.hashtag)
 	.get("/reject-email/:token", ...indexController.rejectEmail)
 	.get("/verify-email/:token", ...indexController.verifyEmail)

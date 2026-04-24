@@ -192,7 +192,7 @@ export const updatePost = factory.createHandlers(validator("param", postInteract
 			return ctx.text("Cannot edit a post that includes a poll", 422);
 		}
 		if (post.content === content) {
-			return ctx.status(304);
+			return ctx.body(null, 304);
 		}
 		const updated = await session.withTransaction(async () => {
 			const originalPostId = post._id;
