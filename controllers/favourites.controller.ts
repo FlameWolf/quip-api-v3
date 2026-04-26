@@ -25,11 +25,13 @@ export const addFavourite = factory.createHandlers(validator("param", postIntera
 				post: originalPostId,
 				favouritedBy: userId
 			}).save({ session });
-			await Post.findByIdAndUpdate(originalPostId, {
-				$inc: {
-					score: favouriteScore
-				}
-			}).session(session);
+			if (post.author.toString() !== userId) {
+				await Post.findByIdAndUpdate(originalPostId, {
+					$inc: {
+						score: favouriteScore
+					}
+				}).session(session);
+			}
 			return favouritedPost;
 		});
 		return ctx.json({ favourited }, 200);
@@ -48,11 +50,19 @@ export const removeFavourite = factory.createHandlers(validator("param", postInt
 				favouritedBy: userId
 			}).session(session);
 			if (unfavouritedPost) {
-				await Post.findByIdAndUpdate(postId, {
-					$inc: {
-						score: -favouriteScore
+				await Post.findOneAndUpdate(
+					{
+						_id: postId,
+						author: {
+							$ne: userId
+						}
+					},
+					{
+						$inc: {
+							score: -favouriteScore
+						}
 					}
-				}).session(session);
+				).session(session);
 			}
 			return unfavouritedPost;
 		});
