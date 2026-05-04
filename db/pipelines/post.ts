@@ -58,14 +58,24 @@ const postAggregationPipeline = (userId?: string | ObjectId): Array<PipelineStag
 				localField: "attachments.post",
 				foreignField: "_id",
 				pipeline: authorLookupAndUnwind,
-				as: "attachments.post"
+				as: "quotedPost"
 			}
 		},
 		{
 			$unwind: {
-				path: "$attachments.post",
+				path: "$quotedPost",
 				preserveNullAndEmptyArrays: true
 			}
+		},
+		{
+			$set: {
+				"attachments.post": {
+					$ifNull: ["$quotedPost", "$attachments.post"]
+				}
+			}
+		},
+		{
+			$unset: "quotedPost"
 		},
 		{
 			$addFields: {
