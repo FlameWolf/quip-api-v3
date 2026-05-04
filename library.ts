@@ -11,6 +11,7 @@ export const rounds = 10;
 export const authTokenLife = 1000 * 60 * 5;
 export const maxContentLength = 256;
 export const maxPollOptionLength = 32;
+export const maxMediaDescriptionLength = 4096;
 export const maxMutedWordLength = 256;
 export const minPollDuration = 1000 * 60 * 30;
 export const maxPollDuration = 1000 * 60 * 60 * 24 * 7;

@@ -2,7 +2,7 @@
 
 import { ObjectId } from "mongodb";
 import { Schema, SchemaTypes, model, type ValidateOpts } from "mongoose";
-import { maxContentLength, maxPollOptionLength, minPollDuration, maxPollDuration, getUnicodeClusterCount } from "../library.ts";
+import { maxContentLength, maxPollOptionLength, minPollDuration, maxPollDuration, getUnicodeClusterCount, maxMediaDescriptionLength } from "../library.ts";
 
 const { Url, Point } = SchemaTypes;
 const validatePollOption: ValidateOpts<string, Dictionary> = {
@@ -72,7 +72,14 @@ const postSchema = new Schema(
 				},
 				src: { type: Url, required: true },
 				previewSrc: { type: Url },
-				description: { type: String, trim: true }
+				description: {
+					type: String,
+					trim: true,
+					validate: {
+						validator: (value: string) => getUnicodeClusterCount(value) <= maxMediaDescriptionLength,
+						message: "Content length exceeds the maximum allowed limit"
+					}
+				}
 			}),
 			post: { type: ObjectId, ref: "Post", index: true }
 		}),
