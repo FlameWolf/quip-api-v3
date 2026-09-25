@@ -95,7 +95,7 @@ export const updateMentionsAndHashtags = async (content: string, post: Partial<P
 				_id: 1
 			}
 		);
-		users.map(user => user._id).forEach(userId => postMentions.add(userId.toString()));
+		users.map(user => user._id as ObjectId).forEach(userId => postMentions.add(userId.toString()));
 	}
 	if (contentHashtags) {
 		contentHashtags.map(hashtag => hashtag.substring(1)).forEach(hashtag => postHashtags.add(hashtag as HashtagEntry));

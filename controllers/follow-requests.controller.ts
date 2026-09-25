@@ -25,12 +25,12 @@ export const acceptFollowRequest = factory.createHandlers(validator("param", req
 			{
 				requestedBy: 1
 			}
-		)) as FollowRequestModel;
+		)) as HydratedDocument<FollowRequestModel>;
 		if (!followRequest) {
 			return ctx.json(new Error("Follow request not found"), 404);
 		}
 		const accepted = await session.withTransaction(async () => {
-			await FollowRequest.deleteOne(followRequest).session(session);
+			await FollowRequest.deleteOne(followRequest as FollowRequestModel).session(session);
 			const acceptedRequest = await new Follow({
 				user: acceptorUserId,
 				followedBy: followRequest.requestedBy
@@ -82,14 +82,14 @@ export const acceptAllFollowRequests = factory.createHandlers(async ctx => {
 			let totalCount = 0;
 			const filter = { user: acceptorUserId };
 			do {
-				const followRequests = await FollowRequest.find(filter, { user: acceptorUserId, followedBy: "$requestedBy" }).limit(batchSize).session(session);
+				const followRequests = (await FollowRequest.find(filter, { user: acceptorUserId, followedBy: "$requestedBy" }).limit(batchSize).session(session)) as Array<Partial<HydratedDocument<FollowRequestModel>>>;
 				await FollowRequest.deleteMany({
 					_id: {
 						$in: followRequests.map(followRequest => followRequest._id)
 					}
 				}).session(session);
 				const result = await Follow.bulkSave(
-					followRequests.map((followRequest: Partial<HydratedDocument<FollowRequestModel>>) => {
+					followRequests.map(followRequest => {
 						delete followRequest._id;
 						return new Follow(followRequest);
 					}),
